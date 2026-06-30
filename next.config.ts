@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+/** Subpath when hosted under a parent domain (e.g. digitalbrandcast.com/wa-automation). */
+const basePathRaw =
+  process.env.NEXT_PUBLIC_BASE_PATH ??
+  (process.env.VERCEL ? "/wa-automation" : "");
+const basePath = basePathRaw.replace(/\/$/, "") || undefined;
+
 /**
  * Baseline security headers applied to every response.
  *
@@ -61,6 +67,10 @@ const SECURITY_HEADERS = [
 ] as const;
 
 const nextConfig: NextConfig = {
+  ...(basePath ? { basePath } : {}),
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath ?? "",
+  },
   /**
    * Cache-Control policy.
    *

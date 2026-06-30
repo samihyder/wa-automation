@@ -15,6 +15,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { appUrl } from '@/lib/app-url';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,7 +83,7 @@ export function WhatsAppConfig() {
 
   const webhookUrl =
     typeof window !== 'undefined'
-      ? `${window.location.origin}/api/whatsapp/webhook`
+      ? appUrl('/api/whatsapp/webhook')
       : '';
 
   const fetchConfig = useCallback(async (acctId: string) => {

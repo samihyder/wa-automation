@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Loader2, LogOut } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
+import { appUrl } from '@/lib/app-url';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -38,7 +39,7 @@ export function SessionsCard() {
         toast.error(`Sign-out failed: ${error.message}`);
         return;
       }
-      window.location.href = '/login';
+      window.location.href = appUrl('/login');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error(msg);

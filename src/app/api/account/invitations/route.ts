@@ -26,6 +26,7 @@ import {
   inviteExpiresAt,
   inviteUrl,
 } from "@/lib/auth/invitations";
+import { getBasePath } from "@/lib/base-path";
 import { isAccountRole } from "@/lib/auth/roles";
 import {
   checkRateLimit,
@@ -91,6 +92,12 @@ function isHostAllowed(
   return allowList.includes(hostname.toLowerCase());
 }
 
+function appendSubpath(origin: string): string {
+  const base = getBasePath();
+  const trimmed = origin.replace(/\/+$/, "");
+  return base ? `${trimmed}${base}` : trimmed;
+}
+
 function getBaseUrl(request: Request): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (explicit) return explicit.replace(/\/+$/, "");
@@ -105,7 +112,7 @@ function getBaseUrl(request: Request): string {
     ?.split(",")[0]
     ?.trim();
   if (forwardedHost && isHostAllowed(forwardedHost, allowList)) {
-    return `${forwardedProto || "https"}://${forwardedHost}`;
+    return appendSubpath(`${forwardedProto || "https"}://${forwardedHost}`);
   }
 
   const host = request.headers.get("host")?.trim();
@@ -113,7 +120,7 @@ function getBaseUrl(request: Request): string {
     // The protocol on `request.url` is whatever the framework saw —
     // reliable for bare deployments where no proxy is rewriting it.
     const reqProto = new URL(request.url).protocol.replace(":", "");
-    return `${reqProto}://${host}`;
+    return appendSubpath(`${reqProto}://${host}`);
   }
 
   // We fall through here when EITHER no Host header was present at

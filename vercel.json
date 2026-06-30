@@ -1,0 +1,10 @@
+{
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/wa-automation/login",
+      "permanent": false
+    }
+  ]
+}

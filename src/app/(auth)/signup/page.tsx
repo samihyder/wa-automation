@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { appUrl } from "@/lib/app-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,7 +66,7 @@ function SignupPageInner() {
     // verifying. Without a token, Supabase uses its default
     // redirect (the app root).
     const emailRedirectTo = inviteToken
-      ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}`
+      ? appUrl(`/join/${encodeURIComponent(inviteToken)}`)
       : undefined;
 
     const { error } = await supabase.auth.signUp({

@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { appUrl } from "@/lib/app-url";
 import type { User } from "@supabase/supabase-js";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import {
@@ -292,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setAccount(null);
-    window.location.href = "/login";
+    window.location.href = appUrl("/login");
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -355,7 +356,7 @@ export function useAuth(): AuthContextValue {
       loading: false,
       profileLoading: false,
       signOut: async () => {
-        window.location.href = "/login";
+        window.location.href = appUrl("/login");
       },
       refreshProfile: async () => {},
       account: null,

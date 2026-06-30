@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { withBasePath } from '@/lib/base-path'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -53,28 +54,32 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === '/signup' ||
     request.nextUrl.pathname === '/forgot-password'
   )) {
-    const url = request.nextUrl.clone()
     const inviteToken = request.nextUrl.searchParams.get('invite')
     if (
       inviteToken &&
       (request.nextUrl.pathname === '/login' ||
         request.nextUrl.pathname === '/signup')
     ) {
-      url.pathname = `/join/${encodeURIComponent(inviteToken)}`
-      url.search = ''
-    } else {
-      url.pathname = '/dashboard'
-      url.search = ''
+      return withRefreshedCookies(
+        NextResponse.redirect(
+          new URL(
+            withBasePath(`/join/${encodeURIComponent(inviteToken)}`),
+            request.url,
+          ),
+        ),
+      )
     }
-    return withRefreshedCookies(NextResponse.redirect(url))
+    return withRefreshedCookies(
+      NextResponse.redirect(new URL(withBasePath('/dashboard'), request.url)),
+    )
   }
 
   // Protected pages - redirect to login if not authenticated
   const protectedPaths = ['/dashboard', '/inbox', '/contacts', '/pipelines', '/broadcasts', '/automations', '/settings']
   if (!user && protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return withRefreshedCookies(NextResponse.redirect(url))
+    return withRefreshedCookies(
+      NextResponse.redirect(new URL(withBasePath('/login'), request.url)),
+    )
   }
 
   // API routes that need auth (not webhooks)

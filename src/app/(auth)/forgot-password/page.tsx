@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { appUrl } from "@/lib/app-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +28,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     const { error } = await createClient().auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${appUrl("/auth/callback")}?next=${encodeURIComponent(appUrl("/reset-password"))}`,
     });
 
     if (error) {
