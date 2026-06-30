@@ -1,6 +1,9 @@
-# wacrm on a subpath (e.g. www.digitalbrandcast.com/wa-automation)
+# wacrm on a subpath (standalone production)
 
-Use this when wacrm lives **under** your main marketing site instead of its own subdomain.
+wa-automation is its **own** Vercel project — independent of FlowChat or any other app.
+
+Use a subpath when this deployment is served under a parent hostname, e.g.
+`https://www.digitalbrandcast.com/wa-automation`.
 
 ## URLs when configured
 
@@ -10,7 +13,9 @@ Use this when wacrm lives **under** your main marketing site instead of its own 
 | Dashboard | `https://www.digitalbrandcast.com/wa-automation/dashboard` |
 | WhatsApp webhook | `https://www.digitalbrandcast.com/wa-automation/api/whatsapp/webhook` |
 
-## 1. Vercel env vars (wa-automation project)
+Direct Vercel URL (no custom domain): `https://<your-project>.vercel.app/wa-automation/login`
+
+## 1. Vercel env vars (wa-automation project only)
 
 Set these on the **wa-automation** Vercel project, then **redeploy** (`basePath` is baked at build time):
 
@@ -20,15 +25,24 @@ Set these on the **wa-automation** Vercel project, then **redeploy** (`basePath`
 | `NEXT_PUBLIC_SITE_URL` | `https://www.digitalbrandcast.com/wa-automation` |
 | `ALLOWED_INVITE_HOSTS` | `www.digitalbrandcast.com,digitalbrandcast.com` |
 
-Keep all other production vars (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `META_APP_SECRET`, etc.) as before.
+Keep all other production vars (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `META_APP_SECRET`, etc.) on this project only.
 
-## 2. Route traffic to wa-automation
+## 2. Custom domain on wa-automation (recommended for standalone)
 
-Your **main site** (`www.digitalbrandcast.com`) must forward `/wa-automation` to the wa-automation deployment.
+This app does **not** route through FlowChat. To use `www.digitalbrandcast.com/wa-automation`:
 
-### Option A — Main site on Vercel
+1. Vercel → **wa-automation** project → Settings → Domains
+2. Add `www.digitalbrandcast.com`
+3. Point DNS for `www` to Vercel (per the records Vercel shows)
+4. Keep `NEXT_PUBLIC_BASE_PATH=/wa-automation` so routes live under `/wa-automation`
 
-In the parent project `vercel.json`:
+Visitors use `https://www.digitalbrandcast.com/wa-automation/login`. The site root `/` on that hostname redirects to `/wa-automation/login` via this project's `vercel.json`.
+
+> **Note:** A hostname can only be attached to one Vercel project. If `www.digitalbrandcast.com` is already on another project (e.g. a marketing site), use **Option B** instead — or use a dedicated subdomain like `wa.digitalbrandcast.com` on the wa-automation project (no `basePath` needed).
+
+## 3. Option B — Parent site proxies `/wa-automation`
+
+If a **different** site owns `www.digitalbrandcast.com` (marketing site, Cloudflare, nginx — not FlowChat), add rewrites there:
 
 ```json
 {
@@ -45,30 +59,24 @@ In the parent project `vercel.json`:
 }
 ```
 
-Replace `wa-automation-neon.vercel.app` with your wa-automation Vercel URL.
+Replace `wa-automation-neon.vercel.app` with your wa-automation production URL.
 
-### Option B — Cloudflare / nginx
+## 4. Supabase Auth
 
-Proxy `/wa-automation/*` to `https://<wa-automation-vercel-url>/wa-automation/*`.
-
-## 3. Supabase Auth
-
-In Supabase → Authentication → URL configuration:
+In **this app's** Supabase project → Authentication → URL configuration:
 
 - **Site URL:** `https://www.digitalbrandcast.com/wa-automation`
-- **Redirect URLs:** add `https://www.digitalbrandcast.com/wa-automation/**`
+- **Redirect URLs:** `https://www.digitalbrandcast.com/wa-automation/**`
 
-## 4. Meta WhatsApp webhook
-
-Set callback URL to:
+## 5. Meta WhatsApp webhook
 
 `https://www.digitalbrandcast.com/wa-automation/api/whatsapp/webhook`
 
-## 5. Verify
+## 6. Verify
 
-1. Open `https://www.digitalbrandcast.com/wa-automation/login`
-2. Sign in → dashboard at `/wa-automation/dashboard`
-3. Settings → WhatsApp shows the webhook URL with the `/wa-automation` prefix
+1. `https://<wa-automation-vercel-url>/wa-automation/login` — works after deploy
+2. Custom domain or parent proxy — `https://www.digitalbrandcast.com/wa-automation/login`
+3. Settings → WhatsApp shows webhook URL with `/wa-automation` prefix
 
 ## Local dev with subpath (optional)
 
@@ -78,8 +86,6 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000/wa-automation \
 npm run dev
 ```
 
-App: `http://localhost:3000/wa-automation/login`
-
 ## Rollback to root deploy
 
-Remove `NEXT_PUBLIC_BASE_PATH` (or set empty), set `NEXT_PUBLIC_SITE_URL` to your root URL, redeploy.
+Remove `NEXT_PUBLIC_BASE_PATH`, set `NEXT_PUBLIC_SITE_URL` to your root URL (e.g. `https://wa-automation-neon.vercel.app`), redeploy.
