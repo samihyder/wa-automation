@@ -27,22 +27,14 @@ Set these on the **wa-automation** Vercel project, then **redeploy** (`basePath`
 
 Keep all other production vars (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `META_APP_SECRET`, etc.) on this project only.
 
-## 2. Custom domain on wa-automation (recommended for standalone)
+## 2. Proxy `/wa-automation` on the domain owner (Option B)
 
-This app does **not** route through FlowChat. To use `www.digitalbrandcast.com/wa-automation`:
+`www.digitalbrandcast.com` is attached to the **FlowChat** Vercel project (domain
+owner). wa-automation stays a **separate** Vercel project with its own env vars,
+Supabase, and deploys — FlowChat only **proxies** `/wa-automation` traffic at the
+edge.
 
-1. Vercel → **wa-automation** project → Settings → Domains
-2. Add `www.digitalbrandcast.com`
-3. Point DNS for `www` to Vercel (per the records Vercel shows)
-4. Keep `NEXT_PUBLIC_BASE_PATH=/wa-automation` so routes live under `/wa-automation`
-
-Visitors use `https://www.digitalbrandcast.com/wa-automation/login`. The site root `/` on that hostname redirects to `/wa-automation/login` via this project's `vercel.json`.
-
-> **Note:** A hostname can only be attached to one Vercel project. If `www.digitalbrandcast.com` is already on another project (e.g. a marketing site), use **Option B** instead — or use a dedicated subdomain like `wa.digitalbrandcast.com` on the wa-automation project (no `basePath` needed).
-
-## 3. Option B — Parent site proxies `/wa-automation`
-
-If a **different** site owns `www.digitalbrandcast.com` (marketing site, Cloudflare, nginx — not FlowChat), add rewrites there:
+In `FlowChat/apps/web/vercel.json`:
 
 ```json
 {
@@ -59,7 +51,19 @@ If a **different** site owns `www.digitalbrandcast.com` (marketing site, Cloudfl
 }
 ```
 
-Replace `wa-automation-neon.vercel.app` with your wa-automation production URL.
+Redeploy **FlowChat web** after changing this file. No wa-automation code or env
+vars live in FlowChat.
+
+## 3. Option A — Custom domain on wa-automation (alternative)
+
+Only if `www.digitalbrandcast.com` is **not** already on another Vercel project:
+
+1. Vercel → **wa-automation** → Settings → Domains → add `www.digitalbrandcast.com`
+2. Point DNS per Vercel's records
+3. Keep `NEXT_PUBLIC_BASE_PATH=/wa-automation`
+
+Or use a dedicated subdomain (`wa.digitalbrandcast.com`) on wa-automation with no
+`basePath`.
 
 ## 4. Supabase Auth
 
