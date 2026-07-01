@@ -33,6 +33,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { fetchApi } from "@/lib/fetch-api"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -229,7 +230,7 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
     // deployments → pickers fall back to a raw agent-id input.
     void (async () => {
       try {
-        const res = await fetch("/api/account/members", { cache: "no-store" })
+        const res = await fetchApi("/api/account/members", { cache: "no-store" })
         if (!res.ok) return
         const json = (await res.json()) as { members?: AccountMember[] }
         if (!cancelled) setMembers(json.members ?? [])
@@ -511,12 +512,12 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
       }
 
       const res = isEditing
-        ? await fetch(`/api/automations/${initial.id}`, {
+        ? await fetchApi(`/api/automations/${initial.id}`, {
             method: "PATCH",
             headers: { "content-type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : await fetch(`/api/automations`, {
+        : await fetchApi(`/api/automations`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify(payload),

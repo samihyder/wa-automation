@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RequireRole } from '@/components/auth/require-role';
 import { useAuth } from '@/hooks/use-auth';
+import { fetchApi } from '@/lib/fetch-api';
 import {
   API_SCOPES,
   SCOPE_DESCRIPTIONS,
@@ -78,7 +79,7 @@ export function ApiKeysSettings() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/account/api-keys', { cache: 'no-store' });
+      const res = await fetchApi('/api/account/api-keys', { cache: 'no-store' });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         toast.error(payload.error || 'Failed to load API keys');
@@ -101,7 +102,7 @@ export function ApiKeysSettings() {
   async function handleRevoke(key: ApiKey) {
     setRevoking(key.id);
     try {
-      const res = await fetch(`/api/account/api-keys/${key.id}`, {
+      const res = await fetchApi(`/api/account/api-keys/${key.id}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
@@ -313,7 +314,7 @@ function CreateKeyDialog({
     }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/account/api-keys', {
+      const res = await fetchApi('/api/account/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmed, scopes }),

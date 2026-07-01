@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { apiPath } from "@/lib/fetch-api";
 import type { Message, MessageReaction } from "@/types";
 import {
   Clock,
@@ -64,7 +65,7 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
     // Proxy URLs need auth fetch to create blob URL
     if (url.startsWith("/api/whatsapp/media/")) {
       try {
-        const res = await fetch(url);
+        const res = await fetch(apiPath(url));
         if (!res.ok) throw new Error("Failed to load media");
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);

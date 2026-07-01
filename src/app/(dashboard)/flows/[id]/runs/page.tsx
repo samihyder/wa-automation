@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -109,7 +110,7 @@ export default function FlowRunsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/flows/${params.id}/runs`);
+        const res = await fetchApi(`/api/flows/${params.id}/runs`);
         if (res.status === 404) {
           if (!cancelled) setNotFound(true);
           return;

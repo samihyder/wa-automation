@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchApi } from "@/lib/fetch-api";
 import { toast } from "sonner";
 import {
   Workflow,
@@ -96,8 +97,8 @@ export default function FlowsPage() {
     (async () => {
       try {
         const [flowsRes, tmplRes] = await Promise.all([
-          fetch("/api/flows"),
-          fetch("/api/flows/templates"),
+          fetchApi("/api/flows"),
+          fetchApi("/api/flows/templates"),
         ]);
         if (!flowsRes.ok) {
           throw new Error(`Failed to load flows: ${flowsRes.status}`);
@@ -130,7 +131,7 @@ export default function FlowsPage() {
     if (!newName.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch("/api/flows", {
+      const res = await fetchApi("/api/flows", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -155,7 +156,7 @@ export default function FlowsPage() {
   async function handleUseTemplate(slug: string) {
     setCreating(true);
     try {
-      const res = await fetch("/api/flows", {
+      const res = await fetchApi("/api/flows", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ template_slug: slug }),
@@ -181,7 +182,7 @@ export default function FlowsPage() {
     );
     if (!yes) return;
     try {
-      const res = await fetch(`/api/flows/${flow.id}`, { method: "DELETE" });
+      const res = await fetchApi(`/api/flows/${flow.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       setFlows((prev) => prev.filter((f) => f.id !== flow.id));
       toast.success("Flow deleted.");

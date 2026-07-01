@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
+import { fetchApi } from '@/lib/fetch-api';
 
 type InviteRole = 'admin' | 'agent' | 'viewer';
 
@@ -110,7 +111,7 @@ export function InviteMemberDialog({
     }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/account/invitations', {
+      const res = await fetchApi('/api/account/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

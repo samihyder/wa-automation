@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { fetchApi } from "@/lib/fetch-api"
 import { toast } from "sonner"
 import {
   Zap,
@@ -88,7 +89,7 @@ export default function AutomationsPage() {
     setAutomations((prev) =>
       prev?.map((x) => (x.id === a.id ? { ...x, is_active: next } : x)) ?? prev,
     )
-    const res = await fetch(`/api/automations/${a.id}`, {
+    const res = await fetchApi(`/api/automations/${a.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ is_active: next }),
@@ -106,7 +107,7 @@ export default function AutomationsPage() {
   }
 
   async function duplicate(a: Automation) {
-    const res = await fetch(`/api/automations/${a.id}/duplicate`, { method: "POST" })
+    const res = await fetchApi(`/api/automations/${a.id}/duplicate`, { method: "POST" })
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       toast.error(body?.error ?? "Failed to duplicate")
@@ -119,7 +120,7 @@ export default function AutomationsPage() {
   async function confirmDelete() {
     if (!pendingDelete) return
     setDeleting(true)
-    const res = await fetch(`/api/automations/${pendingDelete.id}`, { method: "DELETE" })
+    const res = await fetchApi(`/api/automations/${pendingDelete.id}`, { method: "DELETE" })
     setDeleting(false)
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))

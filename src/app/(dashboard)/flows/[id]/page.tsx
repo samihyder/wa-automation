@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { FlowEditorShell } from "@/components/flows/flow-editor-shell";
 import type { FlowRow, FlowNodeRow } from "@/lib/flows/types";
+import { fetchApi } from "@/lib/fetch-api";
 
 /**
  * Flow editor shell.
@@ -34,7 +35,7 @@ export default function FlowEditorPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/flows/${params.id}`);
+        const res = await fetchApi(`/api/flows/${params.id}`);
         if (res.status === 404) {
           if (!cancelled) setNotFound(true);
           return;

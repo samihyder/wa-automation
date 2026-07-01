@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight, Loader2 } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
+import { fetchApi } from '@/lib/fetch-api';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { THEMES } from '@/lib/themes';
@@ -60,9 +61,9 @@ export function SettingsOverview({
       setCountsLoading(true);
       const [membersRes, invitesRes, templatesTotal, templatesPending, tagsRes, fieldsRes] =
         await Promise.allSettled([
-          fetch('/api/account/members', { cache: 'no-store' }).then((r) => r.json()),
+          fetchApi('/api/account/members', { cache: 'no-store' }).then((r) => r.json()),
           canManageMembers
-            ? fetch('/api/account/invitations', { cache: 'no-store' }).then((r) =>
+            ? fetchApi('/api/account/invitations', { cache: 'no-store' }).then((r) =>
                 r.json(),
               )
             : Promise.resolve(null),
@@ -122,7 +123,7 @@ export function SettingsOverview({
           .select('phone_number_id')
           .eq('account_id', acctId)
           .maybeSingle(),
-        fetch('/api/whatsapp/config', { cache: 'no-store' }).then((r) => r.json()),
+        fetchApi('/api/whatsapp/config', { cache: 'no-store' }).then((r) => r.json()),
       ]);
       if (cancelled) return;
       setWhatsapp({

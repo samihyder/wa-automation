@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { fetchApi } from '@/lib/fetch-api';
 import { useAuth } from '@/hooks/use-auth';
 import { formatCurrency } from '@/lib/currency';
 import { toast } from 'sonner';
@@ -335,7 +336,7 @@ export function ContactDetailView({
     if (!contactId) return;
     setSendingTemplate(true);
     try {
-      const res = await fetch('/api/whatsapp/send', {
+      const res = await fetchApi('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

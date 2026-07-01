@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/dialog';
 import { createClient } from '@/lib/supabase/client';
 import { appUrl } from '@/lib/app-url';
+import { fetchApi } from '@/lib/fetch-api';
 
 interface PeekOk {
   ok: true;
@@ -118,7 +119,7 @@ export default function JoinPage() {
     setAuthedUserId(undefined);
     try {
       const [peekRes, authRes] = await Promise.all([
-        fetch(`/api/invitations/${encodeURIComponent(token)}/peek`, {
+        fetchApi(`/api/invitations/${encodeURIComponent(token)}/peek`, {
           cache: 'no-store',
         }),
         createClient().auth.getUser(),
@@ -143,7 +144,7 @@ export default function JoinPage() {
     (async () => {
       try {
         const [peekRes, authRes] = await Promise.all([
-          fetch(`/api/invitations/${encodeURIComponent(token)}/peek`, {
+          fetchApi(`/api/invitations/${encodeURIComponent(token)}/peek`, {
             cache: 'no-store',
           }),
           createClient().auth.getUser(),
@@ -168,7 +169,7 @@ export default function JoinPage() {
     if (!token) return;
     setAccepting(true);
     try {
-      const res = await fetch(
+      const res = await fetchApi(
         `/api/invitations/${encodeURIComponent(token)}/redeem`,
         { method: 'POST' },
       );

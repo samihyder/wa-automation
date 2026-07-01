@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { fetchApi } from "@/lib/fetch-api";
 import { uploadAccountMedia, MEDIA_MAX_BYTES } from "@/lib/storage/upload-media";
 import { slugify, type BuilderNode } from "../shared";
 import { NextNodeRow, NodeKeySelect, TextRow } from "./fields";
@@ -833,7 +834,7 @@ function useUserTags(): UserTag[] {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/tags").catch(() => null);
+        const res = await fetchApi("/api/tags").catch(() => null);
         if (!res || !res.ok) return;
         const json = (await res.json()) as { tags?: UserTag[] };
         if (!cancelled) setTags(json.tags ?? []);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { fetchApi } from "@/lib/fetch-api";
 import { useAuth } from "@/hooks/use-auth";
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceDot } from "@/components/presence/presence-dot";
@@ -459,7 +460,7 @@ export function MessageThread({
       setReplyTo(null);
 
       try {
-        const res = await fetch("/api/whatsapp/send", {
+        const res = await fetchApi("/api/whatsapp/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -523,7 +524,7 @@ export function MessageThread({
       setReplyTo(null);
 
       try {
-        const res = await fetch("/api/whatsapp/send", {
+        const res = await fetchApi("/api/whatsapp/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -607,7 +608,7 @@ export function MessageThread({
       onNewMessage(optimisticMsg);
 
       try {
-        const res = await fetch("/api/whatsapp/send", {
+        const res = await fetchApi("/api/whatsapp/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -739,7 +740,7 @@ export function MessageThread({
       });
 
       try {
-        const res = await fetch("/api/whatsapp/react", {
+        const res = await fetchApi("/api/whatsapp/react", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message_id: messageId, emoji }),

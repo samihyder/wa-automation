@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { appUrl } from '@/lib/app-url';
+import { fetchApi } from '@/lib/fetch-api';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,7 +129,7 @@ export function WhatsAppConfig() {
       // Then verify health via the API (decrypts token + pings Meta)
       if (data) {
         try {
-          const res = await fetch('/api/whatsapp/config', { method: 'GET' });
+          const res = await fetchApi('/api/whatsapp/config', { method: 'GET' });
           const payload = await res.json();
 
           if (payload.connected) {
@@ -210,7 +211,7 @@ export function WhatsAppConfig() {
         return;
       }
 
-      const res = await fetch('/api/whatsapp/config', {
+      const res = await fetchApi('/api/whatsapp/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -269,7 +270,7 @@ export function WhatsAppConfig() {
   async function handleTestConnection() {
     try {
       setTesting(true);
-      const res = await fetch('/api/whatsapp/config', { method: 'GET' });
+      const res = await fetchApi('/api/whatsapp/config', { method: 'GET' });
       const payload = await res.json();
 
       if (payload.connected) {
@@ -300,7 +301,7 @@ export function WhatsAppConfig() {
     setVerifyingRegistration(true);
     setRegistrationProbe(null);
     try {
-      const res = await fetch('/api/whatsapp/config/verify-registration', {
+      const res = await fetchApi('/api/whatsapp/config/verify-registration', {
         method: 'GET',
       });
       const data = (await res.json()) as RegistrationProbe;
@@ -329,7 +330,7 @@ export function WhatsAppConfig() {
 
     try {
       setResetting(true);
-      const res = await fetch('/api/whatsapp/config', { method: 'DELETE' });
+      const res = await fetchApi('/api/whatsapp/config', { method: 'DELETE' });
       const data = await res.json();
 
       if (!res.ok) {

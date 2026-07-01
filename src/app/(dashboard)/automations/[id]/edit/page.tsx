@@ -11,6 +11,7 @@ import {
   type ServerStepNode,
 } from "@/components/automations/automation-builder"
 import type { AutomationTriggerType } from "@/types"
+import { fetchApi } from "@/lib/fetch-api"
 
 export default function EditAutomationPage({
   params,
@@ -25,7 +26,7 @@ export default function EditAutomationPage({
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const res = await fetch(`/api/automations/${id}`)
+      const res = await fetchApi(`/api/automations/${id}`)
       if (!res.ok) {
         if (!cancelled) setError(`Failed to load (${res.status})`)
         return
