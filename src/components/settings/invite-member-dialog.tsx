@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
 import { fetchApi } from '@/lib/fetch-api';
+import { getBrandName } from '@/lib/brand';
 
 type InviteRole = 'admin' | 'agent' | 'viewer';
 
@@ -141,7 +142,7 @@ export function InviteMemberDialog({
         // string if `account` hasn't loaded yet (shouldn't happen
         // — the dialog requires admin+ which requires a loaded
         // profile — but stay safe).
-        accountName: account?.name ?? 'our wacrm account',
+        accountName: account?.name ?? `our ${getBrandName()} account`,
       });
       onCreated();
     } catch (err) {
@@ -170,8 +171,8 @@ export function InviteMemberDialog({
     // they're being invited to before clicking through. This matters
     // for users in multi-team contexts where "our wacrm account"
     // wouldn't be enough to disambiguate.
-    const accountName = result?.accountName ?? 'our wacrm account';
-    const message = `Join ${accountName} on wacrm using this link (valid for ${result?.expiresInDays} days): ${url}`;
+    const accountName = result?.accountName ?? `our ${getBrandName()} account`;
+    const message = `Join ${accountName} on ${getBrandName()} using this link (valid for ${result?.expiresInDays} days): ${url}`;
     return `https://wa.me/?text=${encodeURIComponent(message)}`;
   }
 

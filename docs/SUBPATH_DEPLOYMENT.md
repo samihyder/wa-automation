@@ -76,6 +76,26 @@ In **this app's** Supabase project → Authentication → URL configuration:
 
 `https://www.digitalbrandcast.com/wa-automation/api/whatsapp/webhook`
 
+## 5b. Meta App privacy policy URL
+
+`https://www.digitalbrandcast.com/wa-automation/privacy`
+
+Set in Meta Developer Console → **App Settings** → **Basic** → **Privacy Policy URL** (required for Live mode).
+
+## 5c. Meta App Terms of Service URL
+
+`https://www.digitalbrandcast.com/wa-automation/terms`
+
+## 5d. Meta App data deletion URL
+
+`https://www.digitalbrandcast.com/wa-automation/data-deletion`
+
+Set **User data deletion** to "Data deletion instructions URL" and paste the URL above.
+
+## 5e. Meta App icon
+
+Upload `public/meta-app-icon.png` (1024×1024 PNG, under 5 MB) in Meta Developer Console → **App Settings** → **Basic** → **App Icon**. MS monogram on turquoise/aqua gradient.
+
 ## 6. Verify
 
 1. `https://<wa-automation-vercel-url>/wa-automation/login` — works after deploy

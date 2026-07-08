@@ -6,5 +6,15 @@
       "destination": "/wa-automation/login",
       "permanent": false
     }
+  ],
+  "crons": [
+    {
+      "path": "/wa-automation/api/automations/cron",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/wa-automation/api/flows/cron",
+      "schedule": "*/5 * * * *"
+    }
   ]
 }

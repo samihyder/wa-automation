@@ -23,6 +23,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { getBrandName, getBrandTagline, getBrandMonogram } from "@/lib/brand";
 import type { AccountRole } from "@/lib/auth/roles";
 
 // Per-role chip metadata used in the sidebar's account strip + the
@@ -178,12 +179,22 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {/* Logo row. On mobile we put a close button here; on desktop the
             close button is hidden since the sidebar is always-visible. */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <MessageSquare className="h-4 w-4" />
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+              style={{
+                background: "linear-gradient(135deg, #2DD4BF 0%, #06B6D4 100%)",
+              }}
+            >
+              {getBrandMonogram()}
             </div>
-            <span className="text-sm font-semibold text-foreground">
-              CRM Template for WhatsApp
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate text-sm font-semibold text-foreground">
+                {getBrandName()}
+              </span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                {getBrandTagline()}
+              </span>
             </span>
           </Link>
           <button

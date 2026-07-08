@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { ChevronRight, Loader2 } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
@@ -285,6 +286,29 @@ export function SettingsOverview({
           );
         })}
       </div>
+
+      <p className="mt-8 text-xs text-muted-foreground">
+        <Link
+          href="/privacy"
+          className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+        >
+          Privacy Policy
+        </Link>
+        {" · "}
+        <Link
+          href="/terms"
+          className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+        >
+          Terms
+        </Link>
+        {" · "}
+        <Link
+          href="/data-deletion"
+          className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+        >
+          Data Deletion
+        </Link>
+      </p>
     </section>
   );
 }

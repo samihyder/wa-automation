@@ -1,0 +1,23 @@
+# Fallback cron pinger — runs if Vercel Cron is unavailable on your plan.
+# Set repository secret AUTOMATION_CRON_SECRET to the same value as on Vercel.
+name: Cron ping
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Drain automation wait steps
+        run: |
+          curl -fsS \
+            -H "x-cron-secret: ${{ secrets.AUTOMATION_CRON_SECRET }}" \
+            "https://www.digitalbrandcast.com/wa-automation/api/automations/cron"
+      - name: Sweep abandoned flow runs
+        run: |
+          curl -fsS \
+            -H "x-cron-secret: ${{ secrets.AUTOMATION_CRON_SECRET }}" \
+            "https://www.digitalbrandcast.com/wa-automation/api/flows/cron"

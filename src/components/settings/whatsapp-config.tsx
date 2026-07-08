@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { appUrl } from '@/lib/app-url';
+import { getBrandName } from '@/lib/brand';
+import { getPrivacyPolicyUrl, getTermsOfServiceUrl, getDataDeletionUrl } from '@/lib/legal';
 import { fetchApi } from '@/lib/fetch-api';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -86,6 +88,15 @@ export function WhatsAppConfig() {
     typeof window !== 'undefined'
       ? appUrl('/api/whatsapp/webhook')
       : '';
+
+  const privacyPolicyUrl =
+    typeof window !== 'undefined' ? getPrivacyPolicyUrl() : '';
+
+  const termsOfServiceUrl =
+    typeof window !== 'undefined' ? getTermsOfServiceUrl() : '';
+
+  const dataDeletionUrl =
+    typeof window !== 'undefined' ? getDataDeletionUrl() : '';
 
   const fetchConfig = useCallback(async (acctId: string) => {
     setLoading(true);
@@ -361,6 +372,21 @@ export function WhatsAppConfig() {
     toast.success('Webhook URL copied to clipboard');
   }
 
+  function handleCopyPrivacyPolicyUrl() {
+    navigator.clipboard.writeText(privacyPolicyUrl);
+    toast.success('Privacy Policy URL copied to clipboard');
+  }
+
+  function handleCopyTermsUrl() {
+    navigator.clipboard.writeText(termsOfServiceUrl);
+    toast.success('Terms of Service URL copied to clipboard');
+  }
+
+  function handleCopyDataDeletionUrl() {
+    navigator.clipboard.writeText(dataDeletionUrl);
+    toast.success('Data deletion URL copied to clipboard');
+  }
+
   if (loading) {
     return (
       <section className="animate-in fade-in-50 duration-200">
@@ -467,7 +493,7 @@ export function WhatsAppConfig() {
                   }
                 >
                   {isRegistered
-                    ? 'Registered — Meta will deliver events to wacrm'
+                    ? `Registered — Meta will deliver events to ${getBrandName()}`
                     : 'Not registered — Meta will not deliver events'}
                 </AlertTitle>
               </div>
@@ -648,7 +674,7 @@ export function WhatsAppConfig() {
                   Meta Business Manager → WhatsApp Accounts → Phone
                   Numbers → Two-step verification
                 </strong>
-                , then paste it here so wacrm can subscribe the number —
+                , then paste it here so {getBrandName()} can subscribe the number —
                 otherwise Meta routes inbound events to whichever app
                 last claimed it (the symptom that hits second numbers
                 under a shared WABA).{' '}
@@ -682,6 +708,73 @@ export function WhatsAppConfig() {
                   variant="outline"
                   size="icon"
                   onClick={handleCopyWebhookUrl}
+                  className="shrink-0 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <Copy className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Meta App legal URLs — required for Live mode */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-foreground">Meta App legal URLs</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Copy these into Meta Developer Console → App Settings → Basic
+              (Privacy Policy, Terms of Service, and Data deletion instructions).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Privacy Policy URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={privacyPolicyUrl}
+                  className="bg-muted border-border text-muted-foreground font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyPrivacyPolicyUrl}
+                  className="shrink-0 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <Copy className="size-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Terms of Service URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={termsOfServiceUrl}
+                  className="bg-muted border-border text-muted-foreground font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyTermsUrl}
+                  className="shrink-0 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <Copy className="size-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Data deletion instructions URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={dataDeletionUrl}
+                  className="bg-muted border-border text-muted-foreground font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyDataDeletionUrl}
                   className="shrink-0 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                 >
                   <Copy className="size-4" />

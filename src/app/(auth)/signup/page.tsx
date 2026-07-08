@@ -15,7 +15,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MessageSquare, CheckCircle, UsersRound } from "lucide-react";
+import { CheckCircle, UsersRound } from "lucide-react";
+import { getBrandName } from "@/lib/brand";
+import { BrandMark } from "@/components/brand/brand-mark";
+import { LegalFooter } from "@/components/legal/legal-footer";
 
 // `useSearchParams` opts the component out of static prerendering
 // unless wrapped in Suspense — same pattern as /login.
@@ -132,11 +135,13 @@ function SignupPageInner() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+          <div className="mb-2">
             {inviteToken ? (
-              <UsersRound className="h-6 w-6 text-primary" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                <UsersRound className="h-6 w-6 text-primary" />
+              </div>
             ) : (
-              <MessageSquare className="h-6 w-6 text-primary" />
+              <BrandMark size="md" className="mx-auto" />
             )}
           </div>
           <CardTitle className="text-xl text-foreground">
@@ -145,7 +150,7 @@ function SignupPageInner() {
           <CardDescription className="text-muted-foreground">
             {inviteToken
               ? "Verify your email, then accept the invitation to join your team."
-              : "Get started with CRM Template for WhatsApp"}
+              : `Get started with ${getBrandName()}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -223,6 +228,24 @@ function SignupPageInner() {
             >
               {loading ? "Creating account..." : "Create account"}
             </Button>
+
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
+              By creating an account, you agree to our{" "}
+              <Link
+                href="/terms"
+                className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -238,6 +261,7 @@ function SignupPageInner() {
               Sign in
             </Link>
           </p>
+          <LegalFooter />
         </CardContent>
       </Card>
     </div>

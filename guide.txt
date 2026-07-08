@@ -1,0 +1,426 @@
+================================================================================
+  wacrm (wa-automation) — FULL USAGE GUIDE
+  Digital Brandcast production deployment
+================================================================================
+
+Last updated: June 2026
+Assumes: Supabase, Meta WhatsApp, and Vercel are already configured.
+
+
+--------------------------------------------------------------------------------
+1. YOUR LIVE URLS
+--------------------------------------------------------------------------------
+
+App login:
+  https://www.digitalbrandcast.com/wa-automation/login
+
+Dashboard:
+  https://www.digitalbrandcast.com/wa-automation/dashboard
+
+Settings (all workspace config):
+  https://www.digitalbrandcast.com/wa-automation/settings
+
+Members / invites:
+  https://www.digitalbrandcast.com/wa-automation/settings?tab=members
+
+WhatsApp + webhook:
+  https://www.digitalbrandcast.com/wa-automation/settings?tab=whatsapp
+
+Message templates:
+  https://www.digitalbrandcast.com/wa-automation/settings?tab=templates
+
+Direct Vercel URL (fallback):
+  https://wa-automation-neon.vercel.app/wa-automation/login
+
+WhatsApp webhook (paste in Meta Developer Console):
+  https://www.digitalbrandcast.com/wa-automation/api/whatsapp/webhook
+
+Privacy Policy URL (Meta App Settings → Basic → Live mode):
+  https://www.digitalbrandcast.com/wa-automation/privacy
+
+Terms of Service URL (Meta App Settings → Basic):
+  https://www.digitalbrandcast.com/wa-automation/terms
+
+Data deletion instructions URL (Meta App Settings → Basic):
+  https://www.digitalbrandcast.com/wa-automation/data-deletion
+
+Meta App Icon (App Settings → Basic → App Icon, square PNG/JPG up to 5 MB):
+  public/meta-app-icon.png  (1024×1024, ~38 KB)
+  public/meta-app-icon-512.png  (512×512 backup)
+
+
+--------------------------------------------------------------------------------
+2. ROLES & TEAM SETUP
+--------------------------------------------------------------------------------
+
+Roles (least → most access):
+  viewer  — read-only everywhere
+  agent   — inbox, contacts, broadcasts, automations, flows (no settings)
+  admin   — everything except transfer ownership
+  owner   — full control including ownership transfer
+
+Add a teammate (no email system — link only):
+  1. Settings → Team members → Invite member
+  2. Pick role + link expiry (1 / 7 / 30 days)
+  3. Click Generate link
+  4. COPY THE LINK IMMEDIATELY — it is shown once only
+  5. Send via WhatsApp, Slack, email, etc.
+
+Invitee flow:
+  1. Opens link → /wa-automation/join/<token>
+  2. Signs up (new) or signs in (existing account)
+  3. Clicks Accept invitation
+  4. Lands on dashboard with access to your shared workspace
+
+One WhatsApp number = one workspace account. All members share the same
+inbox, contacts, automations, and WhatsApp config.
+
+
+--------------------------------------------------------------------------------
+3. DAILY OPERATIONS (MANUAL CRM)
+--------------------------------------------------------------------------------
+
+INBOX  (/wa-automation/inbox)
+  - Shared team inbox for your WhatsApp Business number
+  - Assign conversations to agents
+  - Reply with text, templates, voice notes, images
+  - Real-time updates when customers message you
+
+CONTACTS  (/wa-automation/contacts)
+  - Import CSV (phone required; name/email/company optional)
+  - Tags + custom fields for segmentation
+  - Dedup on phone number
+  - Open contact detail → notes, deals, send template
+
+PIPELINES  (/wa-automation/pipelines)
+  - Kanban deals linked to contacts
+  - Stages, values, currency (Settings → Deals & currency)
+  - Drag cards between stages
+
+DASHBOARD  (/wa-automation/dashboard)
+  - Response times, message volume, pipeline value, activity feed
+
+
+--------------------------------------------------------------------------------
+4. WHATSAPP SETUP CHECKLIST (ONE-TIME)
+--------------------------------------------------------------------------------
+
+Do this once per workspace (admin+):
+
+A) Meta Developer Console
+   - App → WhatsApp → Configuration
+   - Callback URL:
+       https://www.digitalbrandcast.com/wa-automation/api/whatsapp/webhook
+   - Verify token: same string you save in wacrm Settings → WhatsApp
+   - Subscribe to: messages (and template status if you use templates)
+
+B) wacrm Settings → WhatsApp
+   - Phone Number ID (from Meta)
+   - WABA ID (WhatsApp Business Account ID)
+   - Permanent access token (System User token recommended)
+   - Verify token (matches Meta webhook)
+   - PIN (for number registration, if prompted)
+   - Save → Test connection
+   - Verify registration (confirms Meta will deliver inbound events)
+
+C) Confirm inbound works
+   - Send a WhatsApp message TO your business number from a personal phone
+   - It should appear in Inbox within a few seconds
+   - If not: re-check webhook URL, META_APP_SECRET on Vercel, and registration
+
+
+--------------------------------------------------------------------------------
+5. MESSAGE TEMPLATES (REQUIRED FOR BROADCASTS & OUTBOUND)
+--------------------------------------------------------------------------------
+
+WhatsApp only allows free-form replies inside a 24-hour "session window"
+after the customer last messaged you. Outside that window you MUST use
+Meta-approved templates.
+
+Settings → Templates:
+  1. Create template (name, category, language, body, optional header/buttons)
+  2. Submit to Meta for approval
+  3. Sync templates to pull approval status from Meta
+  4. Use approved templates in Broadcasts and automation "Send template" steps
+
+Tip: Create a small library first — greeting, follow-up, appointment reminder.
+
+
+--------------------------------------------------------------------------------
+6. FULL AUTOMATION — THREE LAYERS
+--------------------------------------------------------------------------------
+
+wacrm automates WhatsApp in three ways. Use them together:
+
+  LAYER 1 — AUTOMATIONS (background rules)
+    Trigger → steps (message, tag, wait, condition, webhook, etc.)
+    Best for: auto-replies, tagging, routing, timed follow-ups
+
+  LAYER 2 — FLOWS (interactive conversations)
+    Keyword or first-message triggers → buttons, lists, collect input
+    Best for: menus, qualification, self-service before human handoff
+
+  LAYER 3 — BROADCASTS (one-to-many campaigns)
+    Approved template → audience (all, tags, custom field, CSV)
+    Best for: announcements, promos, re-engagement outside 24h window
+
+Inbound path (automatic once webhook works):
+  Customer WhatsApp message
+    → Meta POSTs to your webhook
+    → wacrm creates/updates contact + conversation
+    → Automation engine runs matching rules
+    → Flow engine runs if a flow is triggered
+    → Message appears in Inbox for agents
+
+
+--------------------------------------------------------------------------------
+7. AUTOMATIONS — STEP BY STEP
+--------------------------------------------------------------------------------
+
+Open: /wa-automation/automations
+
+Create:
+  1. New automation → name + description
+  2. Choose trigger:
+       new_message_received     — every inbound message
+       first_inbound_message    — first reply from a contact (great for welcome)
+       keyword_match            — message contains/exact keyword
+       new_contact_created      — contact added (import, API, etc.)
+       conversation_assigned  — when agent is assigned
+       tag_added              — when a specific tag is applied
+       time_based             — scheduled (cron-style)
+
+  3. Add steps (drag in builder):
+       send_message           — free text (only inside 24h session)
+       send_template          — approved template (works anytime)
+       add_tag / remove_tag
+       assign_conversation    — specific agent or round-robin
+       update_contact_field   — built-in or custom fields
+       create_deal            — pipeline automation
+       wait                   — delay (minutes/hours/days) — needs CRON (see §9)
+       condition              — branch on tag, time, field, etc.
+       send_webhook           — POST JSON to your external URL
+       close_conversation
+
+  4. Toggle Active when ready
+  5. Check logs: automation → View logs
+
+Starter templates (clone and edit):
+  - Welcome Message (first_inbound_message)
+  - Out of Office (time condition + auto-reply)
+  - Lead Qualifier (keyword + tag)
+  - Follow-up Reminder
+
+Example — auto-welcome new chats:
+  Trigger: first_inbound_message
+  Step 1: send_message "Hi! Thanks for messaging us. An agent will reply shortly."
+  Step 2: add_tag "new-lead"
+  → Activate
+
+
+--------------------------------------------------------------------------------
+8. FLOWS — INTERACTIVE BOT BUILDER
+--------------------------------------------------------------------------------
+
+Open: /wa-automation/flows
+
+Flows handle multi-step conversations (buttons, lists, collect phone/email).
+
+Create:
+  1. New flow → pick template or blank:
+       welcome_menu      — keyword → buttons → route new vs existing
+       faq_bot           — answer common questions
+       lead_capture      — collect name/email before handoff
+
+  2. Set trigger:
+       keyword            — e.g. "help", "support", "price"
+       first_inbound_message
+       manual             — started by agent/API only
+
+  3. Build nodes on canvas:
+       send_message, send_buttons, send_list
+       collect_input      — save reply to contact field
+       condition, set_tag, handoff (to human), end
+
+  4. Activate flow
+  5. Monitor runs: flow → Runs
+
+When customer types a matching keyword, the flow runs instead of (or
+alongside) simple automations. Use "handoff" node to drop them into
+the human inbox.
+
+
+--------------------------------------------------------------------------------
+9. CRON JOBS (REQUIRED FOR WAIT STEPS & FLOW TIMEOUTS)
+--------------------------------------------------------------------------------
+
+If you use automation "Wait" steps OR active flows, set up scheduled pings.
+
+On Vercel (wa-automation project), add env var:
+  AUTOMATION_CRON_SECRET=<long random string>
+  Generate: openssl rand -hex 32
+
+Hit these URLs on a schedule (every 1–5 minutes) with header:
+  x-cron-secret: <your AUTOMATION_CRON_SECRET>
+
+Endpoints:
+  GET https://www.digitalbrandcast.com/wa-automation/api/automations/cron
+      → resumes automations paused on Wait steps
+
+  GET https://www.digitalbrandcast.com/wa-automation/api/flows/cron
+      → times out abandoned flow runs (frees contacts for new flows)
+
+Options to schedule:
+  A) Vercel Cron (add to wa-automation/vercel.json crons array)
+  B) GitHub Actions scheduled workflow
+  C) External cron (cron-job.org, EasyCron) — POST/GET with secret header
+  D) Your own server crontab
+
+Without cron: Wait steps never resume; stuck flows block re-triggers.
+
+
+--------------------------------------------------------------------------------
+10. BROADCASTS — CAMPAIGN WORKFLOW
+--------------------------------------------------------------------------------
+
+Open: /wa-automation/broadcasts
+
+  1. New broadcast
+  2. Select approved template
+  3. Map template variables ({{1}}, {{2}}, …) per contact or static text
+  4. Choose audience:
+       All contacts
+       By tags (OR logic)
+       By custom field filter
+       CSV upload (phones)
+  5. Optional: exclude tag
+  6. Review → Send
+  7. Track delivery/read per recipient on broadcast detail page
+
+Rules:
+  - Broadcasts ALWAYS use templates (Meta policy)
+  - Respect opt-in / local marketing laws
+  - Start with a small test tag before full list
+
+
+--------------------------------------------------------------------------------
+11. RECOMMENDED "FULL AUTOMATION" PLAYBOOK
+--------------------------------------------------------------------------------
+
+Phase 1 — Foundation (day 1)
+  [ ] Webhook connected + test inbound message in Inbox
+  [ ] 2–3 approved templates (hello, follow-up, promo)
+  [ ] Tags: new-lead, qualified, customer, support
+  [ ] Automation: welcome on first_inbound_message + tag new-lead
+
+Phase 2 — Routing (week 1)
+  [ ] Flow: keyword "help" → menu buttons → handoff to inbox
+  [ ] Automation: keyword "price" → send_template + add_tag qualified
+  [ ] Assign conversations in Inbox to agents
+  [ ] Pipeline stages: New → Qualified → Won → Lost
+
+Phase 3 — Scale (ongoing)
+  [ ] AUTOMATION_CRON_SECRET + cron every 5 min (§9)
+  [ ] Wait-step automation: follow up 24h after tag "qualified"
+  [ ] Broadcast: weekly template to tag "customer"
+  [ ] send_webhook step → your CRM/analytics endpoint (optional)
+
+Phase 4 — Team
+  [ ] Invite agents (Settings → Members)
+  [ ] Agents use Inbox only; admin manages automations/flows
+  [ ] Review automation logs weekly for failures
+
+
+--------------------------------------------------------------------------------
+12. PUBLIC API (OPTIONAL INTEGRATIONS)
+--------------------------------------------------------------------------------
+
+Base URL:
+  https://www.digitalbrandcast.com/wa-automation/api/v1
+
+Create key: Settings → API keys (admin+)
+
+Current endpoint:
+  GET /api/v1/me  — verify key + list scopes
+
+Planned: send messages, contacts CRUD, broadcasts via API.
+See docs/public-api.md in the repo.
+
+Example:
+  curl https://www.digitalbrandcast.com/wa-automation/api/v1/me \
+    -H "Authorization: Bearer wacrm_live_YOUR_KEY"
+
+
+--------------------------------------------------------------------------------
+13. SETTINGS REFERENCE
+--------------------------------------------------------------------------------
+
+  overview    — workspace summary counts
+  profile     — your name, avatar, email
+  security    — password, sign out all devices
+  appearance  — theme (dark/light), accent color
+  whatsapp    — Meta connection + webhook URL
+  templates   — create/sync WhatsApp templates
+  fields      — custom fields + tags
+  deals       — default currency
+  members     — team roster + invites
+  api         — API keys for external scripts
+
+
+--------------------------------------------------------------------------------
+14. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+
+Invite link not generating
+  → Hard-refresh page (deploy with fetchApi fix must be live)
+  → You must be admin or owner
+  → Check browser Network tab: POST .../wa-automation/api/account/invitations
+
+Inbound messages not appearing
+  → Meta webhook URL must include /wa-automation path
+  → META_APP_SECRET must match Meta app on Vercel
+  → Settings → WhatsApp → Verify registration
+  → Send test FROM personal phone TO business number
+
+Automations not firing
+  → Automation must be Active (toggle on)
+  → Check trigger matches (keyword case, first message vs every message)
+  → View automation logs for errors
+  → send_message only works inside 24h session — use send_template outside
+
+Wait step never continues
+  → AUTOMATION_CRON_SECRET not set or cron not hitting /api/automations/cron
+
+Flow stuck / won't re-trigger
+  → Run /api/flows/cron on schedule
+  → Or manually deactivate timed-out run in flow Runs view
+
+Template broadcast fails
+  → Template must be APPROVED in Meta
+  → Sync templates after Meta approval
+  → Variable count must match template placeholders
+
+404 on pages or API
+  → Always use /wa-automation prefix in URLs
+  → Bookmarks should start with www.digitalbrandcast.com/wa-automation/...
+
+
+--------------------------------------------------------------------------------
+15. QUICK LINK CHEAT SHEET
+--------------------------------------------------------------------------------
+
+  Login          /wa-automation/login
+  Inbox          /wa-automation/inbox
+  Contacts       /wa-automation/contacts
+  Pipelines      /wa-automation/pipelines
+  Broadcasts     /wa-automation/broadcasts
+  Automations    /wa-automation/automations
+  Flows          /wa-automation/flows
+  Settings       /wa-automation/settings
+  Members        /wa-automation/settings?tab=members
+  WhatsApp       /wa-automation/settings?tab=whatsapp
+  Templates      /wa-automation/settings?tab=templates
+
+================================================================================
+  End of guide — fork docs: https://wacrm.tech/docs
+================================================================================

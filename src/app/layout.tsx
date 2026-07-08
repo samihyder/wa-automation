@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
+import { getBrandName, getBrandTitle } from "@/lib/brand";
 import {
   DEFAULT_MODE,
   DEFAULT_THEME,
@@ -20,10 +21,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "wacrm",
-    template: "%s — wacrm",
+    default: getBrandName(),
+    template: `%s — ${getBrandName()}`,
   },
-  description: "Self-hostable CRM template for WhatsApp.",
+  description: `${getBrandTitle()} — shared inbox, contacts, pipelines, broadcasts, and automations for WhatsApp Business.`,
   robots: {
     index: false,
     follow: false,
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  themeColor: "#0c1a1f",
   colorScheme: "dark light",
 };
 
