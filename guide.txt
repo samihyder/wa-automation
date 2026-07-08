@@ -47,6 +47,7 @@ Data deletion instructions URL (Meta App Settings → Basic):
 Meta App Icon (App Settings → Basic → App Icon, square PNG/JPG up to 5 MB):
   public/meta-app-icon.png  (1024×1024, ~38 KB)
   public/meta-app-icon-512.png  (512×512 backup)
+  public/meta-app-icon-250.png  (250×250)
 
 
 --------------------------------------------------------------------------------
