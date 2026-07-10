@@ -125,6 +125,65 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Auth and session-aware pages must not be cached at the edge.
+        // Middleware redirects (e.g. login → dashboard) were being stored
+        // in the CDN and later served to logged-out users as a 307 loop.
+        source: "/login",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/signup",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/forgot-password",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/reset-password",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/auth/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/dashboard",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/inbox",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/contacts",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/pipelines",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/broadcasts/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/automations/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/settings",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/flows/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/join/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
         // Security headers on every response, including /_next/static
         // assets (nosniff matters there) and /api/* (HSTS + referrer-
         // policy don't hurt).
