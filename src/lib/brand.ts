@@ -9,6 +9,7 @@ export const BRAND = {
     process.env.NEXT_PUBLIC_BRAND_TAGLINE?.trim() || "WhatsApp CRM",
   monogram: "MS",
   colors: {
+    /** Mutex ecosystem — shared with FlowChat & LeadMonitor */
     turquoise: "#2DD4BF",
     aqua: "#06B6D4",
     gradient: "linear-gradient(135deg, #2DD4BF 0%, #06B6D4 100%)",

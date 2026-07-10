@@ -42,6 +42,7 @@ import {
   type ApiScope,
 } from '@/lib/api-keys/scopes';
 import { SettingsPanelHead } from './settings-panel-head';
+import { FlowchatIntegrationPanel } from './flowchat-integration-panel';
 
 interface ApiKey {
   id: string;
@@ -270,6 +271,8 @@ export function ApiKeysSettings() {
         onOpenChange={setCreateOpen}
         onCreated={load}
       />
+
+      <FlowchatIntegrationPanel />
     </section>
   );
 }

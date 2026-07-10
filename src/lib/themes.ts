@@ -13,14 +13,7 @@
  *   2. Add an entry below. The order here drives the picker grid.
  */
 
-export const THEME_IDS = [
-  "aqua",
-  "violet",
-  "emerald",
-  "cobalt",
-  "amber",
-  "rose",
-] as const;
+export const THEME_IDS = ["aqua"] as const;
 
 export type ThemeId = (typeof THEME_IDS)[number];
 
@@ -70,39 +63,9 @@ export interface ThemeMeta {
 export const THEMES: ReadonlyArray<ThemeMeta> = [
   {
     id: "aqua",
-    name: "Aqua",
+    name: "Mutex Aqua",
     tagline: "Mutex Systems — turquoise and aqua brand colors.",
     swatch: "oklch(0.68 0.14 192)",
-  },
-  {
-    id: "violet",
-    name: "Violet",
-    tagline: "Confident, slightly playful purple.",
-    swatch: "oklch(0.526 0.247 293)",
-  },
-  {
-    id: "emerald",
-    name: "Emerald",
-    tagline: "Growth-coded, nods at messaging without copying WhatsApp green.",
-    swatch: "oklch(0.62 0.16 162)",
-  },
-  {
-    id: "cobalt",
-    name: "Cobalt",
-    tagline: "Clean B2B-SaaS blue — calm and product-y.",
-    swatch: "oklch(0.585 0.2 254)",
-  },
-  {
-    id: "amber",
-    name: "Amber",
-    tagline: "Warm and friendly — feels good for SMB teams.",
-    swatch: "oklch(0.745 0.16 65)",
-  },
-  {
-    id: "rose",
-    name: "Rose",
-    tagline: "Bold and modern — D2C, creator-economy, lifestyle.",
-    swatch: "oklch(0.645 0.22 16)",
   },
 ];
 
