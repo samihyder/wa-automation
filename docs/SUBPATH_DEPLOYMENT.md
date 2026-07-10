@@ -73,11 +73,11 @@ In **this app's** Supabase project → Authentication → URL configuration:
 - **Redirect URLs** (add each):
   - `https://www.digitalbrandcast.com/wa-automation/**`
   - `https://www.digitalbrandcast.com/wa-automation/auth/callback`
-  - `https://www.digitalbrandcast.com/wa-automation/auth/callback?next=/reset-password`
+  - `https://www.digitalbrandcast.com/wa-automation/reset-password`
 
 Do **not** leave Site URL as `http://localhost:3000` in production — password reset emails will redirect to localhost and fail.
 
-Password reset flow: `/forgot-password` → email link → `/auth/callback` → `/reset-password`.
+Password reset flow: `/forgot-password` → email link → `/reset-password` (set new password on that page).
 
 ## 5. Meta WhatsApp webhook
 

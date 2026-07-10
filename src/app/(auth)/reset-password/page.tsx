@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ export default function ResetPasswordPage() {
 
 function ResetPasswordPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -43,6 +44,44 @@ function ResetPasswordPageInner() {
     const supabase = createClient();
 
     async function ensureRecoverySession() {
+      const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+
+      if (code) {
+        const { error: codeError } =
+          await supabase.auth.exchangeCodeForSession(code);
+        if (!cancelled) {
+          if (codeError) {
+            setError(codeError.message);
+            setCheckingSession(false);
+            return;
+          }
+          setHasSession(true);
+          setCheckingSession(false);
+          router.replace("/reset-password");
+        }
+        return;
+      }
+
+      if (tokenHash && type === "recovery") {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        });
+        if (!cancelled) {
+          if (otpError) {
+            setError(otpError.message);
+            setCheckingSession(false);
+            return;
+          }
+          setHasSession(true);
+          setCheckingSession(false);
+          router.replace("/reset-password");
+        }
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -61,6 +100,7 @@ function ResetPasswordPageInner() {
             setError(hashError.message);
           } else if (data.session) {
             setHasSession(true);
+            router.replace("/reset-password");
           } else {
             setError("This reset link is invalid or has expired.");
           }
@@ -91,7 +131,7 @@ function ResetPasswordPageInner() {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
