@@ -70,7 +70,14 @@ Or use a dedicated subdomain (`wa.digitalbrandcast.com`) on wa-automation with n
 In **this app's** Supabase project → Authentication → URL configuration:
 
 - **Site URL:** `https://www.digitalbrandcast.com/wa-automation`
-- **Redirect URLs:** `https://www.digitalbrandcast.com/wa-automation/**`
+- **Redirect URLs** (add each):
+  - `https://www.digitalbrandcast.com/wa-automation/**`
+  - `https://www.digitalbrandcast.com/wa-automation/auth/callback`
+  - `https://www.digitalbrandcast.com/wa-automation/auth/callback?next=/reset-password`
+
+Do **not** leave Site URL as `http://localhost:3000` in production — password reset emails will redirect to localhost and fail.
+
+Password reset flow: `/forgot-password` → email link → `/auth/callback` → `/reset-password`.
 
 ## 5. Meta WhatsApp webhook
 
