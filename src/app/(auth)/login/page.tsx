@@ -1,9 +1,10 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { withBasePath } from "@/lib/base-path";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,8 +44,6 @@ function LoginPageInner() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
     if (callbackError) {
@@ -57,21 +56,48 @@ function LoginPageInner() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) {
+        throw new Error(
+          "Supabase is not configured on this deployment. Set NEXT_PUBLIC_SUPABASE_URL on Vercel and redeploy.",
+        );
+      }
 
-    if (error) {
-      setError(error.message);
+      const supabase = createClient();
+      const { error: signInError } = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Sign in timed out. Check your connection, then try again.",
+                ),
+              ),
+            15000,
+          ),
+        ),
+      ]);
+
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      const destination = inviteToken
+        ? withBasePath(`/join/${encodeURIComponent(inviteToken)}`)
+        : withBasePath("/dashboard");
+
+      // Full navigation so middleware sees the new session cookies
+      // (client router.push can hang behind the FlowChat proxy).
+      window.location.assign(destination);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
       setLoading(false);
-      return;
-    }
-
-    if (inviteToken) {
-      router.push(`/join/${encodeURIComponent(inviteToken)}`);
-    } else {
-      router.push("/dashboard");
     }
   };
 
