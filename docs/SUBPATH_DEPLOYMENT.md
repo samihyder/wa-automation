@@ -47,12 +47,30 @@ In `FlowChat/apps/web/vercel.json`:
       "source": "/wa-automation/:path*",
       "destination": "https://wa-automation-neon.vercel.app/wa-automation/:path*"
     }
+  ],
+  "headers": [
+    {
+      "source": "/wa-automation",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store, no-cache, must-revalidate" },
+        { "key": "CDN-Cache-Control", "value": "no-store" },
+        { "key": "Vercel-CDN-Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/wa-automation/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store, no-cache, must-revalidate" },
+        { "key": "CDN-Cache-Control", "value": "no-store" },
+        { "key": "Vercel-CDN-Cache-Control", "value": "no-store" }
+      ]
+    }
   ]
 }
 ```
 
-Redeploy **FlowChat web** after changing this file. No wa-automation code or env
-vars live in FlowChat.
+The `headers` block prevents the FlowChat edge from caching wa-automation auth
+redirects (which caused a stale `Redirecting (307)` loop on `/login`).
 
 ## 3. Option A — Custom domain on wa-automation (alternative)
 
