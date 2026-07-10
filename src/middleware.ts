@@ -3,6 +3,30 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { withBasePath } from '@/lib/base-path'
 import { getSupabaseCookieOptions } from '@/lib/supabase/cookie-options'
 
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+  'CDN-Cache-Control': 'no-store',
+  'Vercel-CDN-Cache-Control': 'no-store',
+} as const
+
+function withNoStore<T extends NextResponse>(response: T): T {
+  for (const [key, value] of Object.entries(NO_STORE_HEADERS)) {
+    response.headers.set(key, value)
+  }
+  return response
+}
+
+const AUTH_PATHS = new Set(['/login', '/signup', '/forgot-password', '/reset-password'])
+const PROTECTED_PATHS = [
+  '/dashboard',
+  '/inbox',
+  '/contacts',
+  '/pipelines',
+  '/broadcasts',
+  '/automations',
+  '/settings',
+]
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -42,8 +66,18 @@ export async function middleware(request: NextRequest) {
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       response.cookies.set(cookie)
     })
-    return response
+    return withNoStore(response)
   }
+
+  const pathname = request.nextUrl.pathname
+  const isAuthPage = AUTH_PATHS.has(pathname) || pathname.startsWith('/join/')
+  const isProtectedPage = PROTECTED_PATHS.some((path) => pathname.startsWith(path))
+  const isSessionAware =
+    isAuthPage ||
+    isProtectedPage ||
+    pathname.startsWith('/flows') ||
+    pathname.startsWith('/broadcasts') ||
+    pathname.startsWith('/auth/')
 
   // Auth pages - redirect to dashboard if already logged in.
   // Exception: when an invite token is in the query string we
@@ -52,15 +86,15 @@ export async function middleware(request: NextRequest) {
   // a forwarded invite link to someone who's already signed in
   // would silently drop them on /dashboard.
   if (user && (
-    request.nextUrl.pathname === '/login' ||
-    request.nextUrl.pathname === '/signup' ||
-    request.nextUrl.pathname === '/forgot-password'
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname === '/forgot-password'
   )) {
     const inviteToken = request.nextUrl.searchParams.get('invite')
     if (
       inviteToken &&
-      (request.nextUrl.pathname === '/login' ||
-        request.nextUrl.pathname === '/signup')
+      (pathname === '/login' ||
+        pathname === '/signup')
     ) {
       return withRefreshedCookies(
         NextResponse.redirect(
@@ -77,8 +111,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protected pages - redirect to login if not authenticated
-  const protectedPaths = ['/dashboard', '/inbox', '/contacts', '/pipelines', '/broadcasts', '/automations', '/settings']
-  if (!user && protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
+  if (!user && PROTECTED_PATHS.some((path) => pathname.startsWith(path))) {
     return withRefreshedCookies(
       NextResponse.redirect(new URL(withBasePath('/login'), request.url)),
     )
@@ -90,6 +123,10 @@ export async function middleware(request: NextRequest) {
     return withRefreshedCookies(
       NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     )
+  }
+
+  if (isSessionAware) {
+    return withNoStore(supabaseResponse)
   }
 
   return supabaseResponse
