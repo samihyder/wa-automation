@@ -187,11 +187,46 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { phone_number_id, waba_id, access_token, verify_token, pin } = body
 
-    if (!access_token || !phone_number_id) {
+    if (!phone_number_id) {
       return NextResponse.json(
-        { error: 'access_token and phone_number_id are required' },
+        { error: 'phone_number_id is required' },
         { status: 400 }
       )
+    }
+
+    // Look up any pre-existing row early — reused for token rotation,
+    // registration skip logic, and optional access_token reuse when the
+    // UI is in "locked" edit mode (user didn't re-paste the token).
+    const { data: existing } = await supabase
+      .from('whatsapp_config')
+      .select('id, registered_at, phone_number_id, access_token')
+      .eq('account_id', accountId)
+      .maybeSingle()
+
+    let resolvedAccessToken: string | undefined =
+      typeof access_token === 'string' && access_token.trim()
+        ? access_token.trim()
+        : undefined
+
+    if (!resolvedAccessToken) {
+      if (!existing?.access_token) {
+        return NextResponse.json(
+          { error: 'access_token is required for initial setup' },
+          { status: 400 }
+        )
+      }
+      try {
+        resolvedAccessToken = decrypt(existing.access_token)
+      } catch (err) {
+        console.error('[whatsapp/config POST] Token decryption failed:', err)
+        return NextResponse.json(
+          {
+            error:
+              'Stored access token cannot be decrypted. Reset configuration and reconnect with a new token.',
+          },
+          { status: 400 }
+        )
+      }
     }
 
     if (pin !== undefined && pin !== null && pin !== '') {
@@ -240,7 +275,7 @@ export async function POST(request: Request) {
     try {
       phoneInfo = await verifyPhoneNumber({
         phoneNumberId: phone_number_id,
-        accessToken: access_token,
+        accessToken: resolvedAccessToken,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown Meta API error'
@@ -255,7 +290,7 @@ export async function POST(request: Request) {
     let encryptedAccessToken: string
     let encryptedVerifyToken: string | null
     try {
-      encryptedAccessToken = encrypt(access_token)
+      encryptedAccessToken = encrypt(resolvedAccessToken)
       encryptedVerifyToken = verify_token ? encrypt(verify_token) : null
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown encryption error'
@@ -269,15 +304,6 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
-
-    // Look up any pre-existing row for this account so we know whether
-    // this number is already registered with Meta — if so we can skip
-    // /register when the user didn't provide a PIN this time around.
-    const { data: existing } = await supabase
-      .from('whatsapp_config')
-      .select('id, registered_at, phone_number_id')
-      .eq('account_id', accountId)
-      .maybeSingle()
 
     const sameNumber =
       existing?.phone_number_id === phone_number_id &&
@@ -314,7 +340,7 @@ export async function POST(request: Request) {
         try {
           await registerPhoneNumber({
             phoneNumberId: phone_number_id,
-            accessToken: access_token,
+            accessToken: resolvedAccessToken,
             pin,
           })
           registeredAt = new Date().toISOString()
@@ -339,7 +365,7 @@ export async function POST(request: Request) {
       try {
         await subscribeWabaToApp({
           wabaId: waba_id,
-          accessToken: access_token,
+          accessToken: resolvedAccessToken,
         })
         subscribedAppsAt = new Date().toISOString()
       } catch (err) {

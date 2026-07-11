@@ -13,6 +13,8 @@ import {
   Zap,
   AlertTriangle,
   RotateCcw,
+  Pencil,
+  Lock,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { appUrl } from '@/lib/app-url';
@@ -64,6 +66,11 @@ export function WhatsAppConfig() {
   const [verifyToken, setVerifyToken] = useState('');
   const [pin, setPin] = useState('');
   const [tokenEdited, setTokenEdited] = useState(false);
+  const [isEditingConnection, setIsEditingConnection] = useState(false);
+  const [phoneInfo, setPhoneInfo] = useState<{
+    verified_name?: string;
+    display_phone_number?: string;
+  } | null>(null);
 
   // True once /register has succeeded on Meta's side (timestamp set
   // in the row). When false, the saved config is metadata-only and
@@ -147,10 +154,13 @@ export function WhatsAppConfig() {
             setConnectionStatus('connected');
             setResetReason(null);
             setStatusMessage('');
+            setPhoneInfo(payload.phone_info ?? null);
+            setIsEditingConnection(false);
           } else {
             setConnectionStatus('disconnected');
             setResetReason(payload.needs_reset ? 'token_corrupted' : payload.reason === 'meta_api_error' ? 'meta_api_error' : null);
             setStatusMessage(payload.message || '');
+            setPhoneInfo(null);
           }
         } catch (err) {
           console.error('Health check failed:', err);
@@ -160,6 +170,8 @@ export function WhatsAppConfig() {
         setConnectionStatus('disconnected');
         setResetReason(null);
         setStatusMessage('');
+        setPhoneInfo(null);
+        setIsEditingConnection(false);
       }
     } catch (err) {
       console.error('fetchConfig error:', err);
@@ -212,14 +224,6 @@ export function WhatsAppConfig() {
 
       if (tokenEdited && accessToken !== MASKED_TOKEN && accessToken.trim()) {
         payload.access_token = accessToken.trim();
-      } else if (config) {
-        // Existing config — reuse stored encrypted token by decrypting on the
-        // server. But our POST handler requires an access_token to verify
-        // with Meta. If the user didn't change the token, we need to signal
-        // that. Simplest: require token re-entry if they're updating.
-        toast.error('Please re-enter the Access Token to save changes');
-        setSaving(false);
-        return;
       }
 
       const res = await fetchApi('/api/whatsapp/config', {
@@ -270,6 +274,9 @@ export function WhatsAppConfig() {
       }
 
       if (accountId) await fetchConfig(accountId);
+      if (!data.registration_error) {
+        setIsEditingConnection(false);
+      }
     } catch (err) {
       console.error('Save error:', err);
       toast.error('Failed to save configuration');
@@ -288,6 +295,8 @@ export function WhatsAppConfig() {
         setConnectionStatus('connected');
         setResetReason(null);
         setStatusMessage('');
+        setPhoneInfo(payload.phone_info ?? null);
+        setIsEditingConnection(false);
         toast.success(
           payload.phone_info?.verified_name
             ? `Connected to ${payload.phone_info.verified_name}`
@@ -359,6 +368,8 @@ export function WhatsAppConfig() {
       setConnectionStatus('disconnected');
       setResetReason(null);
       setStatusMessage('');
+      setPhoneInfo(null);
+      setIsEditingConnection(false);
     } catch (err) {
       console.error('Reset error:', err);
       toast.error('Failed to reset configuration');
@@ -387,6 +398,25 @@ export function WhatsAppConfig() {
     toast.success('Data deletion URL copied to clipboard');
   }
 
+  function handleStartEditConnection() {
+    setIsEditingConnection(true);
+  }
+
+  function handleCancelEditConnection() {
+    if (!config) {
+      setIsEditingConnection(false);
+      return;
+    }
+    setPhoneNumberId(config.phone_number_id || '');
+    setWabaId(config.waba_id || '');
+    setAccessToken(MASKED_TOKEN);
+    setVerifyToken('');
+    setPin('');
+    setTokenEdited(false);
+    setShowToken(false);
+    setIsEditingConnection(false);
+  }
+
   if (loading) {
     return (
       <section className="animate-in fade-in-50 duration-200">
@@ -403,12 +433,35 @@ export function WhatsAppConfig() {
 
   const showResetBanner = resetReason === 'token_corrupted';
   const showMetaErrorBanner = resetReason === 'meta_api_error';
+  const isConnectionLocked =
+    connectionStatus === 'connected' &&
+    Boolean(config) &&
+    !isEditingConnection &&
+    !showResetBanner &&
+    !showMetaErrorBanner;
+  const credentialsDisabled = isConnectionLocked;
 
   return (
     <section className="animate-in fade-in-50 duration-200">
       <SettingsPanelHead
         title="WhatsApp connection"
-        description="Connect your Meta WhatsApp Business API. Credentials, webhook, and setup steps all live here."
+        description={
+          isConnectionLocked
+            ? 'Your Meta WhatsApp API is connected. Settings are locked until you choose to change the connection.'
+            : 'Connect your Meta WhatsApp Business API. Credentials, webhook, and setup steps all live here.'
+        }
+        action={
+          isConnectionLocked ? (
+            <Button
+              variant="outline"
+              onClick={handleStartEditConnection}
+              className="border-border text-foreground hover:bg-muted"
+            >
+              <Pencil className="size-4" />
+              Change Meta/WhatsApp connection
+            </Button>
+          ) : null
+        }
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
       {/* Main config form */}
@@ -475,23 +528,69 @@ export function WhatsAppConfig() {
         )}
 
         {/* Connection Status */}
-        <Alert className="bg-card border-border">
-          <div className="flex items-center gap-2">
-            {connectionStatus === 'connected' ? (
-              <CheckCircle2 className="size-4 text-primary" />
-            ) : (
-              <XCircle className="size-4 text-red-500" />
-            )}
-            <AlertTitle className="text-foreground mb-0">
-              {connectionStatus === 'connected' ? 'Credentials valid' : 'Not Connected'}
-            </AlertTitle>
+        <Alert
+          className={
+            isConnectionLocked
+              ? 'bg-emerald-950/30 border-emerald-700/50'
+              : 'bg-card border-border'
+          }
+        >
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 min-w-0">
+              {connectionStatus === 'connected' ? (
+                <CheckCircle2 className="size-4 text-primary mt-0.5 shrink-0" />
+              ) : (
+                <XCircle className="size-4 text-red-500 mt-0.5 shrink-0" />
+              )}
+              <div className="min-w-0">
+                <AlertTitle className="text-foreground mb-0">
+                  {connectionStatus === 'connected'
+                    ? isConnectionLocked
+                      ? 'Connected to Meta API'
+                      : 'Credentials valid'
+                    : 'Not Connected'}
+                </AlertTitle>
+                <AlertDescription className="text-muted-foreground mt-1">
+                  {connectionStatus === 'connected' ? (
+                    isConnectionLocked ? (
+                      <>
+                        {phoneInfo?.verified_name ? (
+                          <span className="block font-medium text-emerald-200">
+                            {phoneInfo.verified_name}
+                            {phoneInfo.display_phone_number
+                              ? ` · ${phoneInfo.display_phone_number}`
+                              : ''}
+                          </span>
+                        ) : null}
+                        <span className="flex items-center gap-1.5 mt-1 text-xs">
+                          <Lock className="size-3 shrink-0" />
+                          Configuration is saved and locked. Click{' '}
+                          <strong className="text-foreground">Change Meta/WhatsApp connection</strong>{' '}
+                          to edit credentials.
+                        </span>
+                      </>
+                    ) : (
+                      'Your access token authenticates with Meta. See Registration status below for whether webhooks are actually wired.'
+                    )
+                  ) : (
+                    statusMessage ||
+                    'Configure your Meta API credentials below to connect your WhatsApp Business account.'
+                  )}
+                </AlertDescription>
+              </div>
+            </div>
+            {isConnectionLocked ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStartEditConnection}
+                className="border-emerald-700/60 bg-transparent text-emerald-100 hover:bg-emerald-950/50 shrink-0"
+              >
+                <Pencil className="size-3.5" />
+                Change connection
+              </Button>
+            ) : null}
           </div>
-          <AlertDescription className="text-muted-foreground">
-            {connectionStatus === 'connected'
-              ? 'Your access token authenticates with Meta. See Registration status below for whether webhooks are actually wired.'
-              : statusMessage ||
-                'Configure your Meta API credentials below to connect your WhatsApp Business account.'}
-          </AlertDescription>
         </Alert>
 
         {/* Registration Status — the "is it actually live?" check.
@@ -603,12 +702,24 @@ export function WhatsAppConfig() {
         )}
 
         {/* API Credentials */}
-        <Card>
+        <Card className={credentialsDisabled ? 'opacity-95' : undefined}>
           <CardHeader>
-            <CardTitle className="text-foreground">API Credentials</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Enter your Meta WhatsApp Business API credentials.
-            </CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-foreground">API Credentials</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  {credentialsDisabled
+                    ? 'Saved credentials (read-only while connected).'
+                    : 'Enter your Meta WhatsApp Business API credentials.'}
+                </CardDescription>
+              </div>
+              {credentialsDisabled ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-700/50 bg-emerald-950/30 px-2 py-0.5 text-[11px] text-emerald-200">
+                  <Lock className="size-3" />
+                  Locked
+                </span>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -617,7 +728,9 @@ export function WhatsAppConfig() {
                 placeholder="e.g. 100234567890123"
                 value={phoneNumberId}
                 onChange={(e) => setPhoneNumberId(e.target.value)}
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                disabled={credentialsDisabled}
+                readOnly={credentialsDisabled}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-80"
               />
             </div>
 
@@ -627,7 +740,9 @@ export function WhatsAppConfig() {
                 placeholder="e.g. 100234567890456"
                 value={wabaId}
                 onChange={(e) => setWabaId(e.target.value)}
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                disabled={credentialsDisabled}
+                readOnly={credentialsDisabled}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-80"
               />
             </div>
 
@@ -635,9 +750,9 @@ export function WhatsAppConfig() {
               <Label className="text-muted-foreground">Permanent Access Token</Label>
               <div className="relative">
                 <Input
-                  type={showToken ? 'text' : 'password'}
+                  type={showToken && !credentialsDisabled ? 'text' : 'password'}
                   placeholder="Enter your access token"
-                  value={accessToken}
+                  value={credentialsDisabled ? MASKED_TOKEN : accessToken}
                   onChange={(e) => {
                     setAccessToken(e.target.value);
                     setTokenEdited(true);
@@ -648,19 +763,23 @@ export function WhatsAppConfig() {
                       setTokenEdited(true);
                     }
                   }}
-                  className="bg-muted border-border text-foreground placeholder:text-muted-foreground pr-10"
+                  disabled={credentialsDisabled}
+                  readOnly={credentialsDisabled}
+                  className="bg-muted border-border text-foreground placeholder:text-muted-foreground pr-10 disabled:cursor-not-allowed disabled:opacity-80"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowToken(!showToken)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
+                {!credentialsDisabled ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                ) : null}
               </div>
-              {config && !tokenEdited && (
+              {config && !tokenEdited && !credentialsDisabled && (
                 <p className="text-xs text-muted-foreground">
-                  Token is hidden for security. Re-enter it to update configuration.
+                  Token is hidden for security. Re-enter it only if you need to rotate the token.
                 </p>
               )}
             </div>
@@ -669,13 +788,17 @@ export function WhatsAppConfig() {
               <Label className="text-muted-foreground">Webhook Verify Token</Label>
               <Input
                 placeholder="Create a custom verify token"
-                value={verifyToken}
+                value={credentialsDisabled ? (config?.verify_token ? MASKED_TOKEN : '') : verifyToken}
                 onChange={(e) => setVerifyToken(e.target.value)}
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                disabled={credentialsDisabled}
+                readOnly={credentialsDisabled}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-80"
               />
-              <p className="text-xs text-muted-foreground">
-                A custom string you create. Must match the token you set in Meta webhook settings.
-              </p>
+              {!credentialsDisabled ? (
+                <p className="text-xs text-muted-foreground">
+                  A custom string you create. Must match the token you set in Meta webhook settings.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -688,28 +811,32 @@ export function WhatsAppConfig() {
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="6-digit PIN from Meta WhatsApp Manager"
-                value={pin}
+                value={credentialsDisabled ? (config?.registered_at ? '••••••' : '') : pin}
                 onChange={(e) =>
                   setPin(e.target.value.replace(/\D/g, '').slice(0, 6))
                 }
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground tracking-widest"
+                disabled={credentialsDisabled}
+                readOnly={credentialsDisabled}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground tracking-widest disabled:cursor-not-allowed disabled:opacity-80"
               />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Needed only to wire <strong className="text-muted-foreground">inbound</strong> messages
-                for a <strong className="text-muted-foreground">production</strong> number. Set it in{' '}
-                <strong className="text-muted-foreground">
-                  Meta Business Manager → WhatsApp Accounts → Phone
-                  Numbers → Two-step verification
-                </strong>
-                , then paste it here so {getBrandName()} can subscribe the number —
-                otherwise Meta routes inbound events to whichever app
-                last claimed it (the symptom that hits second numbers
-                under a shared WABA).{' '}
-                <strong className="text-muted-foreground">Meta test numbers</strong> have no
-                PIN and are pre-registered — leave this blank for them.
-                Leaving it blank also keeps an existing registration
-                untouched.
-              </p>
+              {!credentialsDisabled ? (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Needed only to wire <strong className="text-muted-foreground">inbound</strong> messages
+                  for a <strong className="text-muted-foreground">production</strong> number. Set it in{' '}
+                  <strong className="text-muted-foreground">
+                    Meta Business Manager → WhatsApp Accounts → Phone
+                    Numbers → Two-step verification
+                  </strong>
+                  , then paste it here so {getBrandName()} can subscribe the number —
+                  otherwise Meta routes inbound events to whichever app
+                  last claimed it (the symptom that hits second numbers
+                  under a shared WABA).{' '}
+                  <strong className="text-muted-foreground">Meta test numbers</strong> have no
+                  PIN and are pre-registered — leave this blank for them.
+                  Leaving it blank also keeps an existing registration
+                  untouched.
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>
@@ -813,20 +940,34 @@ export function WhatsAppConfig() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Configuration'
-            )}
-          </Button>
+          {!isConnectionLocked ? (
+            <>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Configuration'
+                )}
+              </Button>
+              {isEditingConnection && config ? (
+                <Button
+                  variant="outline"
+                  onClick={handleCancelEditConnection}
+                  disabled={saving}
+                  className="border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  Cancel
+                </Button>
+              ) : null}
+            </>
+          ) : null}
           <Button
             variant="outline"
             onClick={handleTestConnection}
@@ -845,7 +986,7 @@ export function WhatsAppConfig() {
               </>
             )}
           </Button>
-          {config && (
+          {config && !isConnectionLocked ? (
             <Button
               variant="outline"
               onClick={handleReset}
@@ -864,7 +1005,7 @@ export function WhatsAppConfig() {
                 </>
               )}
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
