@@ -402,6 +402,7 @@ export function WhatsAppConfig() {
   }
 
   const showResetBanner = resetReason === 'token_corrupted';
+  const showMetaErrorBanner = resetReason === 'meta_api_error';
 
   return (
     <section className="animate-in fade-in-50 duration-200">
@@ -442,6 +443,32 @@ export function WhatsAppConfig() {
                     </>
                   )}
                 </Button>
+              </div>
+            </div>
+          </Alert>
+        )}
+
+        {showMetaErrorBanner && (
+          <Alert className="bg-red-950/40 border-red-600/40">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="size-5 text-red-400 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <AlertTitle className="text-red-200 mb-1">
+                  Meta rejected your access token
+                </AlertTitle>
+                <AlertDescription className="text-red-100/80 text-sm space-y-2">
+                  <p>{statusMessage}</p>
+                  <p>
+                    This is not caused by FlowChat integration changes — Meta API code was not modified.
+                    The stored token decrypts correctly but Meta&apos;s Graph API refused it.
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Generate a new <strong>System User</strong> permanent token in Meta Business Settings → System users.</li>
+                    <li>Ensure scopes include <code className="text-xs">whatsapp_business_messaging</code> and <code className="text-xs">whatsapp_business_management</code>.</li>
+                    <li>Confirm <strong>Phone Number ID</strong> matches the WABA that owns the token.</li>
+                    <li>After switching the app to <strong>Live</strong>, old development tokens often stop working — paste a fresh token below and Save.</li>
+                  </ul>
+                </AlertDescription>
               </div>
             </div>
           </Alert>
