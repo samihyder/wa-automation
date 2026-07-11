@@ -18,12 +18,31 @@ const GCM_IV_LENGTH = 12
 const CBC_IV_LENGTH = 16
 const AUTH_TAG_LENGTH = 16
 
+/** Normalize env value — strip whitespace/quotes sometimes pasted by mistake. */
+function normalizeEncryptionKeyRaw(raw: string | undefined): string {
+  return (raw ?? '').trim().replace(/^["']|["']$/g, '').replace(/\s/g, '')
+}
+
+export function getEncryptionKeyStatus(): {
+  present: boolean
+  length: number
+  valid: boolean
+} {
+  const raw = normalizeEncryptionKeyRaw(process.env.ENCRYPTION_KEY)
+  return {
+    present: raw.length > 0,
+    length: raw.length,
+    valid: /^[0-9a-fA-F]{64}$/.test(raw),
+  }
+}
+
 function encryptionKeyBuffer(): Buffer {
-  const raw = process.env.ENCRYPTION_KEY?.trim() ?? ''
+  const raw = normalizeEncryptionKeyRaw(process.env.ENCRYPTION_KEY)
   if (!/^[0-9a-fA-F]{64}$/.test(raw)) {
+    const status = getEncryptionKeyStatus()
     throw new Error(
-      'ENCRYPTION_KEY must be a 64-character hex string in Vercel env vars. ' +
-        'Generate: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+      `ENCRYPTION_KEY invalid on server (present=${status.present}, length=${status.length}, valid=${status.valid}). ` +
+        'Set a 64-character hex string on Vercel project wa-automation → Environment Variables → Production, then redeploy.'
     )
   }
   return Buffer.from(raw, 'hex')
