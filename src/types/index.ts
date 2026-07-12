@@ -365,6 +365,52 @@ export interface BroadcastRecipient {
 }
 
 // ============================================================
+// Drip campaigns (migration 027)
+// ============================================================
+
+export type DripCampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
+
+export interface DripCampaign {
+  id: string;
+  account_id: string;
+  user_id: string;
+  name: string;
+  description?: string | null;
+  audience_filter?: Record<string, unknown>;
+  status: DripCampaignStatus;
+  enrolled_count: number;
+  completed_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DripCampaignStep {
+  id: string;
+  campaign_id: string;
+  step_order: number;
+  name?: string | null;
+  template_name: string;
+  template_language: string;
+  template_variables?: Record<string, unknown>;
+  header_media_url?: string | null;
+  delay_hours: number;
+  created_at: string;
+}
+
+export interface DripEnrollment {
+  id: string;
+  campaign_id: string;
+  contact_id: string;
+  account_id: string;
+  current_step_index: number;
+  next_run_at: string;
+  status: 'active' | 'completed' | 'cancelled' | 'failed';
+  enrolled_at: string;
+  last_sent_at?: string | null;
+  last_error?: string | null;
+}
+
+// ============================================================
 // Automations (migration 006)
 // ============================================================
 

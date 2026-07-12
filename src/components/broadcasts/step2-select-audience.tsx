@@ -37,6 +37,8 @@ interface Step2Props {
   onUpdate: (audience: AudienceConfig) => void;
   onNext: () => void;
   onBack: () => void;
+  /** When true, hide wizard Back/Next buttons (e.g. embedded in drip builder). */
+  hideNav?: boolean;
 }
 
 const audienceOptions: {
@@ -82,6 +84,7 @@ export function Step2SelectAudience({
   onUpdate,
   onNext,
   onBack,
+  hideNav = false,
 }: Step2Props) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
@@ -449,6 +452,7 @@ export function Step2SelectAudience({
         )}
       </div>
 
+      {!hideNav && (
       <div className="flex items-center justify-between border-t border-border pt-4">
         <Button
           variant="outline"
@@ -467,6 +471,7 @@ export function Step2SelectAudience({
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
+      )}
     </div>
   );
 }

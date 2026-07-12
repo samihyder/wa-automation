@@ -92,6 +92,13 @@ export default function BroadcastsPage() {
     [broadcasts],
   );
 
+  const anyScheduled = useMemo(
+    () => broadcasts.some((b) => b.status === 'scheduled'),
+    [broadcasts],
+  );
+
+  const shouldPoll = anySending || anyScheduled;
+
   useEffect(() => {
     function startPolling() {
       if (pollTimer.current) return;
@@ -107,7 +114,7 @@ export default function BroadcastsPage() {
     // the user is away, and ensures a fresh fetch the moment they
     // refocus so they don't see stale data on return.
     function handleVisibilityChange() {
-      if (!anySending) return;
+      if (!shouldPoll) return;
       if (document.visibilityState === 'hidden') {
         stopPolling();
       } else {
@@ -116,7 +123,7 @@ export default function BroadcastsPage() {
       }
     }
 
-    if (anySending && document.visibilityState === 'visible') {
+    if (shouldPoll && document.visibilityState === 'visible') {
       startPolling();
     } else {
       stopPolling();
@@ -126,7 +133,7 @@ export default function BroadcastsPage() {
       stopPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [anySending]);
+  }, [shouldPoll]);
 
   if (loading) {
     return (
@@ -274,7 +281,9 @@ export default function BroadcastsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground sm:table-cell">
-                      {new Date(broadcast.created_at).toLocaleDateString()}
+                      {broadcast.status === 'scheduled' && broadcast.scheduled_at
+                        ? new Date(broadcast.scheduled_at).toLocaleString()
+                        : new Date(broadcast.created_at).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
                 );

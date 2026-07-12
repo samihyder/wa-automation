@@ -15,6 +15,14 @@
     {
       "path": "/wa-automation/api/flows/cron",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/wa-automation/api/broadcasts/cron",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/wa-automation/api/drip-campaigns/cron",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

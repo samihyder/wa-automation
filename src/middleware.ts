@@ -23,6 +23,7 @@ const PROTECTED_PATHS = [
   '/contacts',
   '/pipelines',
   '/broadcasts',
+  '/drip-campaigns',
   '/automations',
   '/settings',
 ]

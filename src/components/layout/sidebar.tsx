@@ -22,6 +22,7 @@ import {
   Workflow,
   X,
   Zap,
+  Repeat,
 } from "lucide-react";
 import { getBrandName, getBrandTagline, getBrandMonogram } from "@/lib/brand";
 import type { AccountRole } from "@/lib/auth/roles";
@@ -93,6 +94,7 @@ const navItems: NavItem[] = [
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/pipelines", label: "Pipelines", icon: GitBranch },
   { href: "/broadcasts", label: "Broadcasts", icon: Radio },
+  { href: "/drip-campaigns", label: "Drip campaigns", icon: Repeat },
   { href: "/automations", label: "Automations", icon: Zap },
   { href: "/flows", label: "Flows", icon: Workflow, beta: true },
 ];

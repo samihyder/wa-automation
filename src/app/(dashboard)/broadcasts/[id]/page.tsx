@@ -155,6 +155,7 @@ export default function BroadcastDetailPage() {
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -221,6 +222,23 @@ export default function BroadcastDetailPage() {
     const csv = toCsv([header, ...rows]);
     const safeName = broadcast.name.replace(/[^a-z0-9-_]+/gi, '-').toLowerCase();
     downloadBlob(`broadcast-${safeName}-${broadcastId.slice(0, 8)}.csv`, csv);
+  }
+
+  async function handleCancelSchedule() {
+    if (!broadcast || broadcast.status !== 'scheduled') return;
+    setCancelling(true);
+    const supabase = createClient();
+    const { error: updErr } = await supabase
+      .from('broadcasts')
+      .update({ status: 'draft', scheduled_at: null })
+      .eq('id', broadcastId);
+    setCancelling(false);
+    if (updErr) {
+      toast.error(`Failed to cancel: ${updErr.message}`);
+      return;
+    }
+    setBroadcast({ ...broadcast, status: 'draft', scheduled_at: undefined });
+    toast.success('Schedule cancelled — broadcast saved as draft');
   }
 
   async function handleDelete() {
@@ -293,12 +311,21 @@ export default function BroadcastDetailPage() {
                 {status.label}
               </span>
             </div>
-            <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span>Template: {broadcast.template_name}</span>
               <span>-</span>
               <span>
                 Created {new Date(broadcast.created_at).toLocaleDateString()}
               </span>
+              {broadcast.status === 'scheduled' && broadcast.scheduled_at && (
+                <>
+                  <span>-</span>
+                  <span className="text-blue-400">
+                    Scheduled for{' '}
+                    {new Date(broadcast.scheduled_at).toLocaleString()}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -307,6 +334,19 @@ export default function BroadcastDetailPage() {
             "Delete Pipeline" flow. Mid-send broadcasts can't be deleted
             because orphaning in-flight Meta messages would leave the
             funnel inconsistent. */}
+        {/* Actions: cancel schedule or delete */}
+        <div className="flex flex-wrap items-center gap-2">
+        {broadcast.status === 'scheduled' && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={cancelling}
+            onClick={() => void handleCancelSchedule()}
+            className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+          >
+            {cancelling ? 'Cancelling…' : 'Cancel schedule'}
+          </Button>
+        )}
         {confirmDelete ? (
           <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-sm">
             <span className="text-red-300">Delete this broadcast?</span>
@@ -345,7 +385,15 @@ export default function BroadcastDetailPage() {
             Delete
           </Button>
         )}
+        </div>
       </div>
+
+      {broadcast.status === 'scheduled' && (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-sm text-blue-300">
+          This broadcast is queued. Recipients are resolved when the scheduled time
+          arrives (every 5 minutes). Audience may change before send.
+        </div>
+      )}
 
       {/* Stats — 6 cards: Total / Sent / Delivered / Read / Replied / Failed */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

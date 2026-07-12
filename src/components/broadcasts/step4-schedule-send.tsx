@@ -28,6 +28,7 @@ interface Step4Props {
   template: MessageTemplate;
   audience: AudienceConfig;
   onSend: () => void;
+  onSchedule: (scheduledAt: string) => void;
   onSaveDraft?: () => void;
   onBack: () => void;
   isProcessing: boolean;
@@ -40,12 +41,15 @@ export function Step4ScheduleSend({
   template,
   audience,
   onSend,
+  onSchedule,
   onSaveDraft,
   onBack,
   isProcessing,
   progress,
 }: Step4Props) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [sendMode, setSendMode] = useState<'now' | 'schedule'>('now');
+  const [scheduledAt, setScheduledAt] = useState('');
   const [estimatedReach, setEstimatedReach] = useState<number>(0);
   const [loadingReach, setLoadingReach] = useState(true);
 
@@ -142,6 +146,49 @@ export function Step4ScheduleSend({
         </div>
       </div>
 
+      {/* Send mode */}
+      <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
+        <p className="text-sm font-medium text-foreground">When to send</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSendMode('now')}
+            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+              sendMode === 'now'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            Send now
+          </button>
+          <button
+            type="button"
+            onClick={() => setSendMode('schedule')}
+            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+              sendMode === 'schedule'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            Schedule for later
+          </button>
+        </div>
+        {sendMode === 'schedule' && (
+          <div>
+            <label className="mb-1.5 block text-xs text-muted-foreground">
+              Send date & time (your local timezone)
+            </label>
+            <Input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              min={new Date(Date.now() + 5 * 60_000).toISOString().slice(0, 16)}
+              className="max-w-xs border-border bg-muted text-foreground"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Processing overlay */}
       {isProcessing && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -189,23 +236,46 @@ export function Step4ScheduleSend({
           <DialogTrigger
             render={
               <Button
-                disabled={!name.trim() || isProcessing}
+                disabled={
+                  !name.trim() ||
+                  isProcessing ||
+                  (sendMode === 'schedule' && !scheduledAt)
+                }
                 className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               />
             }
           >
             <Send className="h-4 w-4" />
-            Send Broadcast
+            {sendMode === 'schedule' ? 'Schedule Broadcast' : 'Send Broadcast'}
           </DialogTrigger>
           <DialogContent className="border-border bg-popover sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-popover-foreground">Confirm Broadcast</DialogTitle>
+              <DialogTitle className="text-popover-foreground">
+                {sendMode === 'schedule' ? 'Confirm schedule' : 'Confirm Broadcast'}
+              </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                You are about to send this broadcast to{' '}
-                <span className="font-medium text-popover-foreground">{estimatedReach.toLocaleString()}</span>{' '}
-                contacts using the{' '}
-                <span className="font-medium text-popover-foreground">{template.name}</span> template.
-                This action cannot be undone.
+                {sendMode === 'schedule' ? (
+                  <>
+                    Schedule <span className="font-medium text-popover-foreground">{template.name}</span>{' '}
+                    to{' '}
+                    <span className="font-medium text-popover-foreground">
+                      {estimatedReach.toLocaleString()}
+                    </span>{' '}
+                    contacts on{' '}
+                    <span className="font-medium text-popover-foreground">
+                      {scheduledAt ? new Date(scheduledAt).toLocaleString() : '—'}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>
+                    You are about to send this broadcast to{' '}
+                    <span className="font-medium text-popover-foreground">{estimatedReach.toLocaleString()}</span>{' '}
+                    contacts using the{' '}
+                    <span className="font-medium text-popover-foreground">{template.name}</span> template.
+                    This action cannot be undone.
+                  </>
+                )}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -219,12 +289,16 @@ export function Step4ScheduleSend({
               <Button
                 onClick={() => {
                   setShowConfirm(false);
-                  onSend();
+                  if (sendMode === 'schedule' && scheduledAt) {
+                    onSchedule(new Date(scheduledAt).toISOString());
+                  } else {
+                    onSend();
+                  }
                 }}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Send className="h-4 w-4" />
-                Confirm & Send
+                {sendMode === 'schedule' ? 'Confirm schedule' : 'Confirm & Send'}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -51,6 +51,7 @@ interface BroadcastPayload {
 
 interface UseBroadcastSendingReturn {
   createAndSendBroadcast: (payload: BroadcastPayload) => Promise<string>;
+  scheduleBroadcast: (payload: BroadcastPayload, scheduledAtIso: string) => Promise<string>;
   isProcessing: boolean;
   progress: number;
 }
@@ -367,7 +368,9 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
             type: payload.audience.type,
             tagIds: payload.audience.tagIds,
             customField: payload.audience.customField,
+            csvContacts: payload.audience.csvContacts,
             excludeTagIds: payload.audience.excludeTagIds,
+            headerMediaUrl: payload.headerMediaUrl?.trim() || undefined,
           },
           status: 'sending',
           total_recipients: contacts.length,
@@ -572,5 +575,75 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     }
   }
 
-  return { createAndSendBroadcast, isProcessing, progress };
+  async function scheduleBroadcast(
+    payload: BroadcastPayload,
+    scheduledAtIso: string,
+  ): Promise<string> {
+    setIsProcessing(true);
+    setProgress(0);
+
+    const supabase = createClient();
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) throw new Error('You are not signed in.');
+      if (!accountId) throw new Error('Your profile is not linked to an account.');
+
+      const scheduledAt = new Date(scheduledAtIso);
+      if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
+        throw new Error('Scheduled time must be in the future.');
+      }
+
+      setProgress(20);
+      const contacts = await resolveAudience(payload.audience);
+      if (contacts.length === 0) {
+        throw new Error('No contacts found for this audience.');
+      }
+
+      const { data: broadcast, error: broadcastError } = await supabase
+        .from('broadcasts')
+        .insert({
+          user_id: user.id,
+          account_id: accountId,
+          name: payload.name,
+          template_name: payload.template.name,
+          template_language: payload.template.language ?? 'en_US',
+          template_variables: payload.variables,
+          audience_filter: {
+            type: payload.audience.type,
+            tagIds: payload.audience.tagIds,
+            customField: payload.audience.customField,
+            csvContacts: payload.audience.csvContacts,
+            excludeTagIds: payload.audience.excludeTagIds,
+            headerMediaUrl: payload.headerMediaUrl?.trim() || undefined,
+          },
+          scheduled_at: scheduledAt.toISOString(),
+          status: 'scheduled',
+          total_recipients: contacts.length,
+          sent_count: 0,
+          delivered_count: 0,
+          read_count: 0,
+          replied_count: 0,
+          failed_count: 0,
+        })
+        .select()
+        .single();
+
+      if (broadcastError || !broadcast) {
+        throw new Error(
+          `Failed to schedule broadcast: ${broadcastError?.message ?? 'unknown error'}`,
+        );
+      }
+
+      setProgress(100);
+      return broadcast.id;
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  return { createAndSendBroadcast, scheduleBroadcast, isProcessing, progress };
 }
