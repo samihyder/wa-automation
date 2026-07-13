@@ -32,6 +32,7 @@
 
 import type { MessageTemplate, TemplateButton } from '@/types';
 import { extractVariableIndices } from './template-validators';
+import { resolveTemplateHeaderMediaUrl } from './template-header-media';
 
 export interface SendTimeParams {
   /** Values for body {{1}}, {{2}}, … indexed by variable position. */
@@ -94,16 +95,10 @@ function buildHeaderComponent(
     };
   }
 
-  // image / video / document — Meta requires the media component on
-  // every send. Prefer the caller's explicit override; fall back to the
-  // template's stored public URL.
-  //
-  // NOTE: `template.header_handle` is intentionally NOT used here. It's a
-  // Resumable-Upload handle that's only valid as the *creation-time*
-  // sample (`example.header_handle`); it is NOT a reusable send-time
-  // media id, and passing it as `{ id }` makes Meta reject the send. Only
-  // an explicit `headerMediaId` (a real /media upload id) is honored.
-  const link = params.headerMediaUrl ?? template.header_media_url;
+  // image / video / document — Meta requires the media component on every
+  // send. Prefer caller override, then header_media_url, then a CDN URL
+  // Meta stored in header_handle during sync (not resumable `4::` handles).
+  const link = resolveTemplateHeaderMediaUrl(template, params.headerMediaUrl);
   const id = params.headerMediaId;
   if (!link && !id) {
     throw new Error(

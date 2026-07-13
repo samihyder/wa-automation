@@ -233,6 +233,11 @@ export async function POST() {
           ? headerFormat.toLowerCase()
           : null
 
+      const headerHandle = header?.example?.header_handle?.[0] ?? null
+      const headerUrlFromMeta = header?.example?.header_url?.[0] ?? null
+      const headerMediaFromHandle =
+        headerHandle && /^https?:\/\//i.test(headerHandle) ? headerHandle : null
+
       const row = {
         // Account tenancy + user audit, same split as the submit
         // route. account_id is NOT NULL on message_templates
@@ -244,8 +249,8 @@ export async function POST() {
         language: t.language,
         header_type: headerType,
         header_content: header?.text ?? null,
-        header_handle: header?.example?.header_handle?.[0] ?? null,
-        header_media_url: header?.example?.header_url?.[0] ?? null,
+        header_handle: headerHandle,
+        header_media_url: headerUrlFromMeta ?? headerMediaFromHandle,
         body_text: body?.text ?? '',
         footer_text: footer?.text ?? null,
         buttons: parsedButtons.length ? parsedButtons : null,
@@ -258,7 +263,7 @@ export async function POST() {
 
       const { data: existing, error: lookupErr } = await supabase
         .from('message_templates')
-        .select('id')
+        .select('id, header_media_url')
         .eq('account_id', accountId)
         .eq('name', t.name)
         .eq('language', t.language)
@@ -273,10 +278,18 @@ export async function POST() {
         continue
       }
 
+      const mergedRow = {
+        ...row,
+        header_media_url:
+          row.header_media_url ??
+          (existing?.header_media_url as string | null | undefined) ??
+          null,
+      }
+
       if (existing?.id) {
         const { error: updErr } = await supabase
           .from('message_templates')
-          .update(row)
+          .update(mergedRow)
           .eq('id', existing.id)
         if (updErr) {
           errors.push({
@@ -290,7 +303,7 @@ export async function POST() {
       } else {
         const { error: insErr } = await supabase
           .from('message_templates')
-          .insert(row)
+          .insert(mergedRow)
         if (insErr) {
           errors.push({
             name: t.name,

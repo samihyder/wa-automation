@@ -26,6 +26,7 @@ import {
   buildSendParamsWithContactDefaults,
   type ContactFieldSource,
 } from "@/lib/whatsapp/template-auto-fill";
+import { resolveTemplateHeaderMediaUrl } from "@/lib/whatsapp/template-header-media";
 
 export interface TemplateSendValues {
   body: string[];
@@ -187,6 +188,10 @@ export function TemplatePicker({
     () => (selected ? collectVariableSlots(selected) : null),
     [selected],
   );
+  const resolvedHeaderMediaUrl = useMemo(
+    () => (selected ? resolveTemplateHeaderMediaUrl(selected) : undefined),
+    [selected],
+  );
   const canConfirm =
     !!selected &&
     !!slots &&
@@ -262,16 +267,16 @@ export function TemplatePicker({
           </div>
         ) : (
           <div className="space-y-3">
-            {selected.header_type === "image" && !selected.header_media_url && (
+            {selected.header_type === "image" && !resolvedHeaderMediaUrl && (
               <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                 This template has an image header but no media URL is stored locally.
                 Go to Settings → Templates, set the header image URL, or click Sync from Meta.
               </p>
             )}
-            {selected.header_type === "image" && selected.header_media_url && (
+            {selected.header_type === "image" && resolvedHeaderMediaUrl && (
               <div className="overflow-hidden rounded-md border border-border">
                 <img
-                  src={selected.header_media_url}
+                  src={resolvedHeaderMediaUrl}
                   alt="Template header"
                   className="max-h-40 w-full object-cover"
                 />

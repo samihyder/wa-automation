@@ -1,6 +1,7 @@
 import type { MessageTemplate } from '@/types';
 import { extractVariableIndices } from '@/lib/whatsapp/template-validators';
 import type { SendTimeParams } from '@/lib/whatsapp/template-send-builder';
+import { resolveTemplateHeaderMediaUrl } from '@/lib/whatsapp/template-header-media';
 
 export type ContactFieldSource = {
   name?: string | null;
@@ -51,10 +52,7 @@ export function buildSendParamsWithContactDefaults(
     body.push(explicit || defaults[i] || defaults[0] || '');
   }
 
-  const headerMediaUrl =
-    provided.headerMediaUrl?.trim() ||
-    template.header_media_url?.trim() ||
-    undefined;
+  const headerMediaUrl = resolveTemplateHeaderMediaUrl(template, provided.headerMediaUrl);
 
   return {
     ...provided,
