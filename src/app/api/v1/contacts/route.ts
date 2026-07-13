@@ -1,6 +1,36 @@
 import { requireApiKey } from '@/lib/auth/api-context';
 import { normalizePhone } from '@/lib/whatsapp/phone-utils';
 import { badRequest, ok, toApiErrorResponse } from '@/lib/api/v1/respond';
+import {
+  assignImportedContactTags,
+  resolveImportTagIds,
+} from '@/lib/contacts/resolve-import-tags';
+
+async function applyContactTags(
+  supabase: Awaited<ReturnType<typeof requireApiKey>>['supabase'],
+  params: {
+    accountId: string;
+    ownerUserId: string;
+    contactId: string;
+    tagNames: string[];
+  }
+) {
+  const uniqueNames = [...new Set(params.tagNames.map((name) => name.trim()).filter(Boolean))];
+  if (!uniqueNames.length) return;
+
+  const { tagIdByKey } = await resolveImportTagIds(supabase, {
+    accountId: params.accountId,
+    userId: params.ownerUserId,
+    tagNames: uniqueNames,
+    canCreateTags: true,
+  });
+
+  await assignImportedContactTags(
+    supabase,
+    [{ contactId: params.contactId, tagNames: uniqueNames }],
+    tagIdByKey
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +50,17 @@ export async function POST(request: Request) {
 
     const normalized = normalizePhone(phone);
     const name = body.name?.trim() || phone;
+
+    const { data: account } = await ctx.supabase
+      .from('accounts')
+      .select('owner_user_id')
+      .eq('id', ctx.accountId)
+      .maybeSingle();
+
+    const ownerUserId = ctx.createdBy ?? (account?.owner_user_id as string | undefined);
+    if (!ownerUserId) {
+      throw badRequest('Could not resolve account owner for contact insert');
+    }
 
     const { data: existing } = await ctx.supabase
       .from('contacts')
@@ -42,18 +83,17 @@ export async function POST(request: Request) {
         .single();
 
       if (error) throw error;
+
+      if (body.tags?.length) {
+        await applyContactTags(ctx.supabase, {
+          accountId: ctx.accountId,
+          ownerUserId,
+          contactId: existing.id,
+          tagNames: body.tags,
+        });
+      }
+
       return ok({ contact: updated, created: false });
-    }
-
-    const { data: account } = await ctx.supabase
-      .from('accounts')
-      .select('owner_user_id')
-      .eq('id', ctx.accountId)
-      .maybeSingle();
-
-    const ownerUserId = ctx.createdBy ?? (account?.owner_user_id as string | undefined);
-    if (!ownerUserId) {
-      throw badRequest('Could not resolve account owner for contact insert');
     }
 
     const { data: created, error } = await ctx.supabase
@@ -72,23 +112,12 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     if (body.tags?.length && created?.id) {
-      for (const tagName of body.tags) {
-        const { data: tagRow } = await ctx.supabase
-          .from('tags')
-          .insert({
-            account_id: ctx.accountId,
-            user_id: ownerUserId,
-            name: tagName,
-          })
-          .select('id')
-          .maybeSingle();
-        if (tagRow?.id) {
-          await ctx.supabase.from('contact_tags').insert({
-            contact_id: created.id,
-            tag_id: tagRow.id,
-          });
-        }
-      }
+      await applyContactTags(ctx.supabase, {
+        accountId: ctx.accountId,
+        ownerUserId,
+        contactId: created.id,
+        tagNames: body.tags,
+      });
     }
 
     return ok({ contact: created, created: true });
