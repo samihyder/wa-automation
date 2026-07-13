@@ -350,6 +350,7 @@ export function ContactDetailView({
             body: values.body,
             headerText: values.headerText,
             buttonParams: values.buttonParams,
+            headerMediaUrl: template.header_media_url ?? undefined,
           },
           template_params: values.body,
         }),
@@ -758,6 +759,16 @@ export function ContactDetailView({
       open={templatePickerOpen}
       onOpenChange={setTemplatePickerOpen}
       onSelect={handleSendTemplate}
+      defaultContact={
+        contact
+          ? {
+              name: contact.name,
+              email: contact.email,
+              company: contact.company,
+              phone: contact.phone,
+            }
+          : undefined
+      }
     />
     </>
   );

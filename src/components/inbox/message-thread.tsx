@@ -624,6 +624,7 @@ export function MessageThread({
               body: values.body,
               headerText: values.headerText,
               buttonParams: values.buttonParams,
+              headerMediaUrl: template.header_media_url ?? undefined,
             },
             template_params: values.body,
             content_text: renderedBody,
@@ -1086,6 +1087,7 @@ export function MessageThread({
         open={templateModalOpen}
         onOpenChange={setTemplateModalOpen}
         onSelect={handleSendTemplate}
+        defaultContact={contact ?? undefined}
       />
     </div>
   );

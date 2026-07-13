@@ -21,6 +21,7 @@ import {
 } from '@/lib/rate-limit'
 import type { MessageTemplate } from '@/types'
 import { isMessageTemplate } from '@/lib/whatsapp/template-row-guard'
+import { buildSendParamsWithContactDefaults } from '@/lib/whatsapp/template-auto-fill'
 
 export async function POST(request: Request) {
   try {
@@ -326,6 +327,28 @@ export async function POST(request: Request) {
       templateRow = data ?? null
     }
 
+    const c = contact as {
+      name?: string | null
+      email?: string | null
+      company?: string | null
+      phone?: string | null
+    }
+    const contactForFill = {
+      name: c.name,
+      email: c.email,
+      company: c.company,
+      phone: c.phone,
+    }
+
+    const mergedTemplateParams =
+      message_type === 'template' && templateRow
+        ? buildSendParamsWithContactDefaults(
+            templateRow,
+            contactForFill,
+            template_message_params ?? { body: template_params ?? [] },
+          )
+        : template_message_params
+
     const attempt = async (phone: string): Promise<string> => {
       if (message_type === 'template') {
         const result = await sendTemplateMessage({
@@ -335,10 +358,10 @@ export async function POST(request: Request) {
           templateName: template_name,
           language: template_language || 'en_US',
           template: templateRow ?? undefined,
-          messageParams: template_message_params ?? undefined,
+          messageParams: mergedTemplateParams ?? undefined,
           // Legacy body-only fallback — only consulted when
           // messageParams.body isn't set.
-          params: template_params || [],
+          params: (mergedTemplateParams?.body ?? template_params) || [],
           contextMessageId,
         })
         return result.messageId

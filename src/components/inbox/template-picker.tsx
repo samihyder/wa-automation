@@ -22,6 +22,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { extractVariableIndices } from "@/lib/whatsapp/template-validators";
+import {
+  buildSendParamsWithContactDefaults,
+  type ContactFieldSource,
+} from "@/lib/whatsapp/template-auto-fill";
 
 export interface TemplateSendValues {
   body: string[];
@@ -33,6 +37,8 @@ interface TemplatePickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (template: MessageTemplate, values: TemplateSendValues) => void;
+  /** When set, body {{1}} etc. are pre-filled from the contact (editable). */
+  defaultContact?: ContactFieldSource | null;
 }
 
 function renderBodyPreview(body: string, params: string[]): string {
@@ -77,6 +83,7 @@ export function TemplatePicker({
   open,
   onOpenChange,
   onSelect,
+  defaultContact,
 }: TemplatePickerProps) {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,8 +160,13 @@ export function TemplatePicker({
       return;
     }
     setSelected(template);
-    setParams(new Array(slots.bodyVars.length).fill(""));
-    setHeaderText("");
+    const prefilled = buildSendParamsWithContactDefaults(
+      template,
+      defaultContact ?? {},
+      { body: new Array(slots.bodyVars.length).fill("") },
+    );
+    setParams(prefilled.body ?? new Array(slots.bodyVars.length).fill(""));
+    setHeaderText(prefilled.headerText ?? "");
     setButtonParams({});
   }
 
@@ -194,7 +206,9 @@ export function TemplatePicker({
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {selected
-              ? "Fill in the placeholders to render this template. Meta requires every variable to be set."
+              ? defaultContact?.name
+                ? `Placeholders are pre-filled from ${defaultContact.name}. Edit if needed before sending.`
+                : "Fill in the placeholders to render this template. Meta requires every variable to be set."
               : "Pick an approved WhatsApp template to send to this contact."}
           </DialogDescription>
         </DialogHeader>
@@ -248,6 +262,21 @@ export function TemplatePicker({
           </div>
         ) : (
           <div className="space-y-3">
+            {selected.header_type === "image" && !selected.header_media_url && (
+              <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                This template has an image header but no media URL is stored locally.
+                Go to Settings → Templates, set the header image URL, or click Sync from Meta.
+              </p>
+            )}
+            {selected.header_type === "image" && selected.header_media_url && (
+              <div className="overflow-hidden rounded-md border border-border">
+                <img
+                  src={selected.header_media_url}
+                  alt="Template header"
+                  className="max-h-40 w-full object-cover"
+                />
+              </div>
+            )}
             <div className="rounded-md border border-border bg-background/50 p-3">
               <p className="mb-1 text-xs text-muted-foreground">Preview</p>
               <p className="whitespace-pre-wrap text-sm text-popover-foreground">
