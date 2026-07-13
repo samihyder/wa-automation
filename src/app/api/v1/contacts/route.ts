@@ -5,6 +5,7 @@ import {
   assignImportedContactTags,
   resolveImportTagIds,
 } from '@/lib/contacts/resolve-import-tags';
+import { normalizeWaTags } from '@/lib/contacts/wa-tag-normalize';
 
 async function applyContactTags(
   supabase: Awaited<ReturnType<typeof requireApiKey>>['supabase'],
@@ -13,9 +14,16 @@ async function applyContactTags(
     ownerUserId: string;
     contactId: string;
     tagNames: string[];
+    ctdisrHint?: string;
   }
 ) {
-  const uniqueNames = [...new Set(params.tagNames.map((name) => name.trim()).filter(Boolean))];
+  const uniqueNames = [
+    ...new Set(
+      normalizeWaTags(params.tagNames, { ctdisrHint: params.ctdisrHint }).map((name) =>
+        name.trim(),
+      ),
+    ),
+  ].filter(Boolean);
   if (!uniqueNames.length) return;
 
   const { tagIdByKey } = await resolveImportTagIds(supabase, {
@@ -90,6 +98,7 @@ export async function POST(request: Request) {
           ownerUserId,
           contactId: existing.id,
           tagNames: body.tags,
+          ctdisrHint: name,
         });
       }
 
@@ -117,6 +126,7 @@ export async function POST(request: Request) {
         ownerUserId,
         contactId: created.id,
         tagNames: body.tags,
+        ctdisrHint: name,
       });
     }
 
