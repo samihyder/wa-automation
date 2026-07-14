@@ -54,42 +54,69 @@ function MediaUnavailable({ label }: { label: string }) {
   );
 }
 
-function MediaImage({ url, alt }: { url: string; alt: string }) {
+/**
+ * Resolve media for playback. WhatsApp media is stored as an authenticated
+ * proxy path (`/api/whatsapp/media/:id`). A bare <audio>/<video>/<img> src
+ * misses the basePath and doesn't always send session cookies, so we fetch
+ * with credentials and play from a blob URL (same pattern for images).
+ */
+function useProxiedMediaSrc(url: string | null | undefined) {
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(url));
 
-  const loadImage = useCallback(async () => {
-    if (!url) return;
+  const load = useCallback(async () => {
+    if (!url) {
+      setLoading(false);
+      setError(true);
+      return;
+    }
 
-    // Proxy URLs need auth fetch to create blob URL
-    if (url.startsWith("/api/whatsapp/media/")) {
-      try {
-        const res = await fetch(apiPath(url));
-        if (!res.ok) throw new Error("Failed to load media");
+    setLoading(true);
+    setError(false);
+
+    const isProxy =
+      url.startsWith("/api/whatsapp/media/") ||
+      url.includes("/api/whatsapp/media/");
+
+    try {
+      if (isProxy) {
+        const mediaPath = url.includes("/api/whatsapp/media/")
+          ? `/api/whatsapp/media/${url.split("/api/whatsapp/media/").pop()}`
+          : url;
+        const res = await fetch(apiPath(mediaPath), { credentials: "include" });
+        if (!res.ok) throw new Error(`Failed to load media (${res.status})`);
         const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        setSrc(blobUrl);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
+        setSrc(URL.createObjectURL(blob));
+      } else {
+        setSrc(url);
       }
-    } else {
-      setSrc(url);
+    } catch {
+      setError(true);
+      setSrc(null);
+    } finally {
       setLoading(false);
     }
   }, [url]);
 
   useEffect(() => {
-    loadImage();
+    void load();
     return () => {
-      if (src?.startsWith("blob:")) {
-        URL.revokeObjectURL(src);
-      }
+      // revoke previous blob on url change / unmount via closure below
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadImage]);
+  }, [load]);
+
+  useEffect(() => {
+    return () => {
+      if (src?.startsWith("blob:")) URL.revokeObjectURL(src);
+    };
+  }, [src]);
+
+  return { src, error, loading, retry: load };
+}
+
+function MediaImage({ url, alt }: { url: string; alt: string }) {
+  const { src, error, loading } = useProxiedMediaSrc(url);
 
   if (error) {
     return (
@@ -112,8 +139,87 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
       src={src ?? ""}
       alt={alt}
       className="max-h-64 max-w-60 rounded-lg object-cover"
-      onError={() => setError(true)}
+      onError={() => undefined}
     />
+  );
+}
+
+function MediaAudio({ url }: { url: string }) {
+  const { src, error, loading, retry } = useProxiedMediaSrc(url);
+
+  if (error) {
+    return (
+      <div className="space-y-1">
+        <MediaUnavailable label="Audio" />
+        <button
+          type="button"
+          onClick={() => void retry()}
+          className="text-[11px] text-primary hover:underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !src) {
+    return (
+      <div className="flex h-10 w-60 items-center gap-2 rounded-lg bg-muted/40 px-3 text-xs text-muted-foreground">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Loading audio…
+      </div>
+    );
+  }
+
+  return <audio src={src} controls preload="metadata" className="max-w-60" />;
+}
+
+function MediaVideo({ url }: { url: string }) {
+  const { src, error, loading, retry } = useProxiedMediaSrc(url);
+
+  if (error) {
+    return (
+      <div className="space-y-1">
+        <MediaUnavailable label="Video" />
+        <button
+          type="button"
+          onClick={() => void retry()}
+          className="text-[11px] text-primary hover:underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !src) {
+    return (
+      <div className="flex h-40 w-60 items-center justify-center rounded-lg bg-muted">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  return <video src={src} controls className="max-h-64 max-w-60 rounded-lg" />;
+}
+
+function DocumentLink({ url, label }: { url: string; label: string }) {
+  const isProxy =
+    url.startsWith("/api/whatsapp/media/") || url.includes("/api/whatsapp/media/");
+  const href = isProxy
+    ? apiPath(url.replace(/^.*(\/api\/whatsapp\/media\/)/, "$1"))
+    : url;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm hover:bg-muted"
+    >
+      <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+      <span className="truncate">{label}</span>
+    </a>
   );
 }
 
@@ -146,11 +252,7 @@ function MessageContent({ message }: { message: Message }) {
       return (
         <div>
           {message.media_url ? (
-            <video
-              src={message.media_url}
-              controls
-              className="max-h-64 max-w-60 rounded-lg"
-            />
+            <MediaVideo url={message.media_url} />
           ) : (
             <MediaUnavailable label="Video" />
           )}
@@ -166,7 +268,7 @@ function MessageContent({ message }: { message: Message }) {
       return (
         <div>
           {message.media_url ? (
-            <audio src={message.media_url} controls className="max-w-60" />
+            <MediaAudio url={message.media_url} />
           ) : (
             <MediaUnavailable label="Audio" />
           )}
@@ -178,17 +280,7 @@ function MessageContent({ message }: { message: Message }) {
         return <MediaUnavailable label={message.content_text || "Document"} />;
       }
       return (
-        <a
-          href={message.media_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm hover:bg-muted"
-        >
-          <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-          <span className="truncate">
-            {message.content_text || "Document"}
-          </span>
-        </a>
+        <DocumentLink url={message.media_url} label={message.content_text || "Document"} />
       );
 
     case "template":
