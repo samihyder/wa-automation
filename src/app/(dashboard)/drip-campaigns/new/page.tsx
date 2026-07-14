@@ -7,6 +7,7 @@ import { fetchApi } from '@/lib/fetch-api';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { MessageTemplate } from '@/types';
+import { extractVariableIndices } from '@/lib/whatsapp/template-validators';
 import { Step2SelectAudience } from '@/components/broadcasts/step2-select-audience';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,15 +114,28 @@ export default function NewDripCampaignPage() {
 
       if (campErr || !campaign) throw new Error(campErr?.message ?? 'Failed to create campaign');
 
-      const stepRows = steps.map((s, i) => ({
-        campaign_id: campaign.id,
-        step_order: i,
-        name: s.stepName,
-        template_name: s.templateName,
-        template_language: s.templateLanguage,
-        template_variables: {},
-        delay_hours: i === 0 ? 0 : s.delayHours,
-      }));
+      const stepRows = steps.map((s, i) => {
+        const tmpl = templates.find(
+          (t) => t.name === s.templateName && t.language === s.templateLanguage,
+        );
+        const varCount = tmpl
+          ? extractVariableIndices(tmpl.body_text ?? '').length
+          : 0;
+        const template_variables: Record<string, { type: 'field'; value: string }> = {};
+        for (let v = 1; v <= varCount; v++) {
+          // Default {{1}} to name; later slots also name until UI maps them.
+          template_variables[String(v)] = { type: 'field', value: 'name' };
+        }
+        return {
+          campaign_id: campaign.id,
+          step_order: i,
+          name: s.stepName,
+          template_name: s.templateName,
+          template_language: s.templateLanguage,
+          template_variables,
+          delay_hours: i === 0 ? 0 : s.delayHours,
+        };
+      });
 
       const { error: stepsErr } = await supabase.from('drip_campaign_steps').insert(stepRows);
       if (stepsErr) throw new Error(stepsErr.message);

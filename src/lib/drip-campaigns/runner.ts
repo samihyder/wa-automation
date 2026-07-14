@@ -10,6 +10,7 @@ import {
   sanitizePhoneForMeta,
 } from '@/lib/whatsapp/phone-utils';
 import { isMessageTemplate } from '@/lib/whatsapp/template-row-guard';
+import { buildSendParamsWithContactDefaults } from '@/lib/whatsapp/template-auto-fill';
 import type { AudienceConfig, VariableMapping } from '@/lib/broadcasts/types';
 import {
   fetchCustomValueIndex,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/broadcasts/audience';
 import { resolveVariables } from '@/lib/broadcasts/variables';
 import type { Contact, MessageTemplate } from '@/types';
+import { extractVariableIndices } from '@/lib/whatsapp/template-validators';
 
 type DripStep = {
   id: string;
@@ -229,11 +231,23 @@ async function sendDripStep(
 
   const variables = step.template_variables ?? {};
   const customIndex = await fetchCustomValueIndex(supabase, [contact.id]);
-  const params = resolveVariables(
+  let params = resolveVariables(
     variables,
     contact as Contact,
     customIndex.get(contact.id),
   );
+
+  // Campaign steps often ship with empty template_variables. Backfill from
+  // contact fields so {{1}} greetings still send (same defaults as inbox).
+  if (templateRow) {
+    const needed = extractVariableIndices(templateRow.body_text).length;
+    if (params.length < needed) {
+      const defaults = buildSendParamsWithContactDefaults(templateRow, contact as Contact, {
+        body: params,
+      }).body;
+      params = defaults ?? params;
+    }
+  }
 
   const headerType = templateRow?.header_type;
   const isMediaHeader =
@@ -259,6 +273,11 @@ async function sendDripStep(
         .eq('id', enrollment.id);
       return { ok: false, error: msg };
     }
+    messageParams = buildSendParamsWithContactDefaults(
+      templateRow,
+      contact as Contact,
+      { ...messageParams, body: params },
+    );
   }
 
   const sanitized = sanitizePhoneForMeta(contact.phone);
