@@ -55,6 +55,12 @@ interface WhatsAppMessage {
     button_reply?: { id: string; title: string }
     list_reply?: { id: string; title: string; description?: string }
   }
+  /**
+   * Legacy quick-reply tap on a template (Meta `type: "button"`).
+   * Distinct from interactive.button_reply used by reply-buttons / lists.
+   */
+  button?: { text?: string; payload?: string }
+  contacts?: unknown
   /** Present when the customer swipe-replies to one of our messages. */
   context?: { id: string }
 }
@@ -640,7 +646,9 @@ async function processMessage(
     ? message.type
     : message.type === 'sticker'
       ? 'image'   // stickers are images
-      : 'text'    // reaction, unknown → text fallback
+      : message.type === 'button'
+        ? 'interactive' // template quick-reply tap
+        : 'text'    // reaction, unknown → text fallback
 
   // Determine whether this is the contact's very first inbound message
   // BEFORE we insert, so the count is accurate. Covers the case where
@@ -688,6 +696,14 @@ async function processMessage(
   if (convError) {
     console.error('Error updating conversation:', convError)
   }
+
+  // Honor marketing opt-out keywords (STOP / UNSUBSCRIBE / CANCEL) by
+  // cancelling any active drip enrollments for this contact.
+  await cancelDripsOnOptOut({
+    accountId,
+    contactId: contactRecord.id,
+    text: contentText ?? message.text?.body ?? message.button?.text ?? '',
+  })
 
   // If this contact was a recent broadcast recipient, flag the reply
   // so the broadcast's `replied_count` advances (via the aggregate
@@ -910,6 +926,21 @@ async function parseMessageContent(
       return { ...empty, contentText: '[Interactive reply]' }
     }
 
+    case 'button': {
+      // Template quick-reply button tap (Cloud API type "button").
+      // Common for marketing templates with STOP / START / Call-to-action
+      // quick replies. Prefer the visible label, fall back to payload.
+      const label =
+        message.button?.text?.trim() ||
+        message.button?.payload?.trim() ||
+        'Button'
+      return {
+        ...empty,
+        contentText: label,
+        interactiveReplyId: message.button?.payload?.trim() || label,
+      }
+    }
+
     default:
       return {
         ...empty,
@@ -986,6 +1017,41 @@ async function findOrCreateContact(
   }
 
   return { contact: newContact, wasCreated: true }
+}
+
+const OPT_OUT_KEYWORDS = new Set(['stop', 'unsubscribe', 'cancel', 'optout', 'opt out'])
+
+function isOptOutText(text: string | null | undefined): boolean {
+  if (!text) return false
+  const normalized = text.trim().toLowerCase().replace(/[.!]+$/g, '').replace(/\s+/g, ' ')
+  return OPT_OUT_KEYWORDS.has(normalized)
+}
+
+/**
+ * Cancel active drip enrollments when the contact replies with an opt-out
+ * keyword (STOP / UNSUBSCRIBE / CANCEL). Marketing templates often use a
+ * quick-reply button that arrives as Meta type "button".
+ */
+async function cancelDripsOnOptOut(params: {
+  accountId: string
+  contactId: string
+  text: string
+}): Promise<void> {
+  if (!isOptOutText(params.text)) return
+
+  const { error } = await supabaseAdmin()
+    .from('drip_enrollments')
+    .update({
+      status: 'cancelled',
+      last_error: `Opted out via inbound: ${params.text.trim().slice(0, 40)}`,
+    })
+    .eq('account_id', params.accountId)
+    .eq('contact_id', params.contactId)
+    .eq('status', 'active')
+
+  if (error) {
+    console.error('Error cancelling drip enrollments on opt-out:', error)
+  }
 }
 
 async function findOrCreateConversation(
