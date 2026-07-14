@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-api';
+import { prepareTemplateHeaderMedia } from '@/lib/whatsapp/prepare-template-header-media';
+import type { SendTimeParams } from '@/lib/whatsapp/template-send-builder';
 import {
   isRecipientNotAllowedError,
   isValidE164,
@@ -227,8 +229,27 @@ async function sendDripStep(
   const isMediaHeader =
     headerType === 'image' || headerType === 'video' || headerType === 'document';
   const headerUrl = step.header_media_url?.trim();
-  const messageParams =
+  let messageParams: SendTimeParams | undefined =
     isMediaHeader && headerUrl ? { headerMediaUrl: headerUrl } : undefined;
+
+  if (templateRow) {
+    try {
+      messageParams = await prepareTemplateHeaderMedia({
+        template: templateRow,
+        messageParams,
+        phoneNumberId: config.phone_number_id,
+        accessToken,
+      });
+    } catch (prepErr) {
+      const msg =
+        prepErr instanceof Error ? prepErr.message : 'Header media preparation failed';
+      await supabase
+        .from('drip_enrollments')
+        .update({ status: 'failed', last_error: msg })
+        .eq('id', enrollment.id);
+      return { ok: false, error: msg };
+    }
+  }
 
   const sanitized = sanitizePhoneForMeta(contact.phone);
   if (!isValidE164(sanitized)) {

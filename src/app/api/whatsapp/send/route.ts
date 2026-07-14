@@ -22,6 +22,7 @@ import {
 import type { MessageTemplate } from '@/types'
 import { isMessageTemplate } from '@/lib/whatsapp/template-row-guard'
 import { buildSendParamsWithContactDefaults } from '@/lib/whatsapp/template-auto-fill'
+import { prepareTemplateHeaderMedia } from '@/lib/whatsapp/prepare-template-header-media'
 
 export async function POST(request: Request) {
   try {
@@ -349,6 +350,22 @@ export async function POST(request: Request) {
           )
         : template_message_params
 
+    let sendTemplateParams = mergedTemplateParams
+    if (message_type === 'template' && templateRow) {
+      try {
+        sendTemplateParams = await prepareTemplateHeaderMedia({
+          template: templateRow,
+          messageParams: mergedTemplateParams ?? undefined,
+          phoneNumberId: config.phone_number_id,
+          accessToken,
+        })
+      } catch (prepErr) {
+        const message =
+          prepErr instanceof Error ? prepErr.message : 'Header media preparation failed'
+        return NextResponse.json({ error: message }, { status: 400 })
+      }
+    }
+
     const attempt = async (phone: string): Promise<string> => {
       if (message_type === 'template') {
         const result = await sendTemplateMessage({
@@ -358,10 +375,10 @@ export async function POST(request: Request) {
           templateName: template_name,
           language: template_language || 'en_US',
           template: templateRow ?? undefined,
-          messageParams: mergedTemplateParams ?? undefined,
+          messageParams: sendTemplateParams ?? undefined,
           // Legacy body-only fallback — only consulted when
           // messageParams.body isn't set.
-          params: (mergedTemplateParams?.body ?? template_params) || [],
+          params: (sendTemplateParams?.body ?? template_params) || [],
           contextMessageId,
         })
         return result.messageId

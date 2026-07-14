@@ -328,6 +328,47 @@ export async function sendMediaMessage(
   return { messageId: data.messages[0].id }
 }
 
+export interface UploadMediaArgs {
+  phoneNumberId: string
+  accessToken: string
+  bytes: Uint8Array
+  mimeType: string
+  fileName: string
+}
+
+/**
+ * Upload binary media to Meta for this phone number. Returns a media id
+ * valid for send (~30 days). Prefer this over `link` when the source URL
+ * is ephemeral (WhatsApp sample CDN) or not reliably public.
+ */
+export async function uploadMedia(
+  args: UploadMediaArgs,
+): Promise<{ id: string }> {
+  const { phoneNumberId, accessToken, bytes, mimeType, fileName } = args
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append('type', mimeType)
+  form.append(
+    'file',
+    new Blob([bytes as BlobPart], { type: mimeType }),
+    fileName,
+  )
+
+  const response = await fetch(`${META_API_BASE}/${phoneNumberId}/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: form,
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Media upload failed: ${response.status}`)
+  }
+  const data = (await response.json()) as { id?: string }
+  if (!data.id) {
+    throw new Error('Meta media upload returned no id.')
+  }
+  return { id: data.id }
+}
+
 import type { MessageTemplate } from '@/types'
 import {
   buildSendComponents,

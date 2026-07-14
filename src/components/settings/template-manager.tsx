@@ -12,6 +12,7 @@ import {
   Pencil,
   RotateCcw,
   Upload,
+  ImagePlus,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { apiPath, fetchApi } from '@/lib/fetch-api';
@@ -48,6 +49,7 @@ import type {
   TemplateSampleValues,
 } from '@/types';
 import { templateStatusConfig } from '@/lib/template-status';
+import { headerMediaNeedsRehost } from '@/lib/whatsapp/template-header-media';
 import { getBrandName } from '@/lib/brand';
 import {
   extractVariableIndices,
@@ -150,6 +152,9 @@ export function TemplateManager() {
   // submit route turns that into a Meta Resumable-Upload handle.
   const [uploadingHeader, setUploadingHeader] = useState(false);
   const headerFileRef = useRef<HTMLInputElement>(null);
+  const [settingSendHeaderId, setSettingSendHeaderId] = useState<string | null>(null);
+  const sendHeaderFileRef = useRef<HTMLInputElement>(null);
+  const [sendHeaderTargetId, setSendHeaderTargetId] = useState<string | null>(null);
 
   // Body variable indices — `[1, 2, 3]` for "{{1}} {{2}} {{3}}". We
   // re-run the extractor on every render to keep the sample-value rows
@@ -481,8 +486,60 @@ export function TemplateManager() {
     }
   }
 
+  async function handleSendHeaderImageFile(templateId: string, file: File) {
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      toast.error('Header image must be a JPEG or PNG.');
+      return;
+    }
+    if (file.size > MEDIA_MAX_BYTES_BY_KIND.image) {
+      toast.error(
+        `Image is ${(file.size / 1024 / 1024).toFixed(1)} MB — Meta's limit is 5 MB.`,
+      );
+      return;
+    }
+    setSettingSendHeaderId(templateId);
+    try {
+      const { publicUrl } = await uploadAccountMedia('chat-media', file);
+      const res = await fetchApi(`/api/whatsapp/templates/${templateId}/header-media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ header_media_url: publicUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string' ? data.error : 'Failed to save header image',
+        );
+      }
+      setTemplates((prev) =>
+        prev.map((t) =>
+          t.id === templateId ? { ...t, header_media_url: publicUrl } : t,
+        ),
+      );
+      toast.success('Send-time header image saved. You can send this template now.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setSettingSendHeaderId(null);
+      setSendHeaderTargetId(null);
+    }
+  }
+
   return (
     <section className="animate-in fade-in-50 space-y-4 duration-200">
+      <input
+        ref={sendHeaderFileRef}
+        type="file"
+        accept="image/jpeg,image/png"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file && sendHeaderTargetId) {
+            void handleSendHeaderImageFile(sendHeaderTargetId, file);
+          }
+        }}
+      />
       <SettingsPanelHead
         title="Message templates"
         description={
@@ -573,6 +630,34 @@ export function TemplateManager() {
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0 ml-2">
+                    {statusKey === 'APPROVED' && template.header_type === 'image' && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={settingSendHeaderId === template.id}
+                          onClick={() => {
+                            setSendHeaderTargetId(template.id);
+                            sendHeaderFileRef.current?.click();
+                          }}
+                          title="Upload a public header image used when sending (no Meta re-review)"
+                          aria-label="Set send header image"
+                          className={`h-8 px-2 ${
+                            headerMediaNeedsRehost(template.header_media_url) ||
+                            !template.header_media_url
+                              ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-950/30'
+                              : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                          }`}
+                        >
+                          {settingSendHeaderId === template.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <ImagePlus className="size-3.5" />
+                          )}
+                          Header
+                        </Button>
+                      </>
+                    )}
                     {statusKey === 'APPROVED' && (
                       <Button
                         variant="ghost"

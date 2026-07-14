@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-api';
+import { prepareTemplateHeaderMedia } from '@/lib/whatsapp/prepare-template-header-media';
+import type { SendTimeParams } from '@/lib/whatsapp/template-send-builder';
 import {
   isRecipientNotAllowedError,
   isValidE164,
@@ -158,8 +160,24 @@ export async function executeBroadcastSend(
   const headerType = templateRow?.header_type;
   const isMediaHeader =
     headerType === 'image' || headerType === 'video' || headerType === 'document';
-  const messageParams =
+  let messageParams: SendTimeParams | undefined =
     isMediaHeader && headerMediaUrl ? { headerMediaUrl } : undefined;
+
+  if (templateRow) {
+    try {
+      messageParams = await prepareTemplateHeaderMedia({
+        template: templateRow,
+        messageParams,
+        phoneNumberId: config.phone_number_id,
+        accessToken,
+      });
+    } catch (prepErr) {
+      const message =
+        prepErr instanceof Error ? prepErr.message : 'Header media preparation failed';
+      await supabase.from('broadcasts').update({ status: 'failed' }).eq('id', broadcastId);
+      return { ok: false, error: message };
+    }
+  }
 
   const { data: recipients, error: recipientsFetchError } = await supabase
     .from('broadcast_recipients')

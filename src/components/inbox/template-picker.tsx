@@ -26,7 +26,7 @@ import {
   buildSendParamsWithContactDefaults,
   type ContactFieldSource,
 } from "@/lib/whatsapp/template-auto-fill";
-import { resolveTemplateHeaderMediaUrl } from "@/lib/whatsapp/template-header-media";
+import { resolveTemplateHeaderMediaUrl, headerMediaNeedsRehost } from "@/lib/whatsapp/template-header-media";
 
 export interface TemplateSendValues {
   body: string[];
@@ -199,6 +199,10 @@ export function TemplatePicker({
     (slots.headerVarCount === 0 || headerText.trim().length > 0) &&
     slots.urlButtonSlots.every(
       (s) => (buttonParams[s.index] ?? "").trim().length > 0,
+    ) &&
+    !(
+      selected.header_type === "image" &&
+      (!resolvedHeaderMediaUrl || headerMediaNeedsRehost(resolvedHeaderMediaUrl))
     );
 
   return (
@@ -273,7 +277,17 @@ export function TemplatePicker({
                 Go to Settings → Templates, set the header image URL, or click Sync from Meta.
               </p>
             )}
-            {selected.header_type === "image" && resolvedHeaderMediaUrl && (
+            {selected.header_type === "image" &&
+              resolvedHeaderMediaUrl &&
+              headerMediaNeedsRehost(resolvedHeaderMediaUrl) && (
+              <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                Header image is a temporary Meta sample URL and will fail delivery.
+                Go to Settings → Templates, edit this template, and upload a public header image before sending.
+              </p>
+            )}
+            {selected.header_type === "image" &&
+              resolvedHeaderMediaUrl &&
+              !headerMediaNeedsRehost(resolvedHeaderMediaUrl) && (
               <div className="overflow-hidden rounded-md border border-border">
                 <img
                   src={resolvedHeaderMediaUrl}
