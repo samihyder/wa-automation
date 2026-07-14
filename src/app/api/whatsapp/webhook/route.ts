@@ -381,10 +381,18 @@ async function handleStatusUpdate(status: {
     messageUpdate.error_message = errorMessage
   }
 
-  const { error: msgErr } = await supabaseAdmin()
+  let { error: msgErr } = await supabaseAdmin()
     .from('messages')
     .update(messageUpdate)
     .eq('message_id', status.id)
+
+  // Migration 028 may not be applied yet — retry without error_message.
+  if (msgErr?.message?.includes('error_message')) {
+    ;({ error: msgErr } = await supabaseAdmin()
+      .from('messages')
+      .update({ status: status.status })
+      .eq('message_id', status.id))
+  }
 
   if (msgErr) {
     console.error('Error updating message status:', msgErr)
