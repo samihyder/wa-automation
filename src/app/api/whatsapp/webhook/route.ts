@@ -697,9 +697,9 @@ async function processMessage(
     console.error('Error updating conversation:', convError)
   }
 
-  // Honor marketing opt-out keywords (STOP / UNSUBSCRIBE / CANCEL) by
-  // cancelling any active drip enrollments for this contact.
-  await cancelDripsOnOptOut({
+  // Any inbound customer reply excludes them from remaining drip steps
+  // (human conversation takes over — including STOP / button taps).
+  await cancelActiveDripsOnReply({
     accountId,
     contactId: contactRecord.id,
     text: contentText ?? message.text?.body ?? message.button?.text ?? '',
@@ -1028,29 +1028,31 @@ function isOptOutText(text: string | null | undefined): boolean {
 }
 
 /**
- * Cancel active drip enrollments when the contact replies with an opt-out
- * keyword (STOP / UNSUBSCRIBE / CANCEL). Marketing templates often use a
- * quick-reply button that arrives as Meta type "button".
+ * Cancel active drip enrollments when the contact replies inbound.
+ * Marketing drips stop once a human conversation starts (any reply,
+ * button tap, or explicit STOP/UNSUBSCRIBE/CANCEL).
  */
-async function cancelDripsOnOptOut(params: {
+async function cancelActiveDripsOnReply(params: {
   accountId: string
   contactId: string
   text: string
 }): Promise<void> {
-  if (!isOptOutText(params.text)) return
+  const reason = isOptOutText(params.text)
+    ? `Opted out via inbound: ${params.text.trim().slice(0, 40)}`
+    : 'Excluded: customer replied — remaining drip steps skipped'
 
   const { error } = await supabaseAdmin()
     .from('drip_enrollments')
     .update({
       status: 'cancelled',
-      last_error: `Opted out via inbound: ${params.text.trim().slice(0, 40)}`,
+      last_error: reason,
     })
     .eq('account_id', params.accountId)
     .eq('contact_id', params.contactId)
     .eq('status', 'active')
 
   if (error) {
-    console.error('Error cancelling drip enrollments on opt-out:', error)
+    console.error('Error cancelling drip enrollments on reply:', error)
   }
 }
 
