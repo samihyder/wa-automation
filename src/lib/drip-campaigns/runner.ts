@@ -99,15 +99,22 @@ export async function enrollDripCampaign(
 export async function processDueDripEnrollments(
   supabase: SupabaseClient,
   limit = 30,
+  options?: { campaignId?: string },
 ): Promise<{ processed: number; errors: string[] }> {
   const now = new Date().toISOString();
-  const { data: due, error } = await supabase
+  let query = supabase
     .from('drip_enrollments')
     .select('id, campaign_id, contact_id, account_id, current_step_index')
     .eq('status', 'active')
     .lte('next_run_at', now)
     .order('next_run_at', { ascending: true })
     .limit(limit);
+
+  if (options?.campaignId) {
+    query = query.eq('campaign_id', options.campaignId);
+  }
+
+  const { data: due, error } = await query;
 
   if (error || !due?.length) {
     return { processed: 0, errors: error ? [error.message] : [] };
@@ -117,9 +124,12 @@ export async function processDueDripEnrollments(
   let processed = 0;
 
   for (const row of due as Enrollment[]) {
+    // Soft claim: push next_run_at a few minutes out so concurrent crons
+    // don't double-send while Meta/media work is in flight.
+    const claimUntil = new Date(Date.now() + 5 * 60_000).toISOString();
     const { data: claim } = await supabase
       .from('drip_enrollments')
-      .update({ last_error: null })
+      .update({ last_error: null, next_run_at: claimUntil })
       .eq('id', row.id)
       .eq('status', 'active')
       .select('id')

@@ -78,7 +78,8 @@ describe('drip dashboard helpers', () => {
       templateReadyByKey: ready,
     });
     expect(funnel[0].onStep).toBe(1);
-    expect(funnel[0].reachedOrPast).toBe(3);
+    // Active@0, active@1, completed@2, failed@0 — all four have reached step 0.
+    expect(funnel[0].reachedOrPast).toBe(4);
     expect(funnel[1].templateReady).toBe(false);
   });
 

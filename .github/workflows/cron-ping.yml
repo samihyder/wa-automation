@@ -21,3 +21,13 @@ jobs:
           curl -fsS \
             -H "x-cron-secret: ${{ secrets.AUTOMATION_CRON_SECRET }}" \
             "https://www.digitalbrandcast.com/wa-automation/api/flows/cron"
+      - name: Process due drip enrollments
+        run: |
+          curl -fsS \
+            -H "x-cron-secret: ${{ secrets.AUTOMATION_CRON_SECRET }}" \
+            "https://www.digitalbrandcast.com/wa-automation/api/drip-campaigns/cron"
+      - name: Process due broadcasts
+        run: |
+          curl -fsS \
+            -H "x-cron-secret: ${{ secrets.AUTOMATION_CRON_SECRET }}" \
+            "https://www.digitalbrandcast.com/wa-automation/api/broadcasts/cron"

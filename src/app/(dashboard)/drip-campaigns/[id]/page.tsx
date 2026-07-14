@@ -109,6 +109,7 @@ export default function DripCampaignDetailPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activating, setActivating] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [loadMs, setLoadMs] = useState<number | null>(null);
 
   const load = useCallback(
@@ -177,6 +178,30 @@ export default function DripCampaignDetailPage() {
     }
     toast.success(next === 'paused' ? 'Campaign paused' : 'Campaign resumed');
     await load({ soft: true });
+  }
+
+  async function handleProcessDue() {
+    setProcessing(true);
+    try {
+      const res = await fetchApi(`/api/drip-campaigns/${campaignId}/process`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Process failed');
+      const errN = body.errorCount ?? 0;
+      toast.success(
+        `Processed ${body.processed ?? 0} due recipients` +
+          (errN ? ` (${errN} errors)` : ''),
+      );
+      if (Array.isArray(body.errors) && body.errors.length) {
+        toast.message(String(body.errors[0]));
+      }
+      await load({ soft: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to process due');
+    } finally {
+      setProcessing(false);
+    }
   }
 
   const funnelMax = useMemo(() => {
@@ -286,6 +311,17 @@ export default function DripCampaignDetailPage() {
               Pause
             </Button>
           )}
+          {(campaign.status === 'active' || campaign.status === 'paused') && dash.dueNow > 0 && (
+            <Button
+              variant="outline"
+              disabled={processing}
+              onClick={() => void handleProcessDue()}
+              title="Send the next due step for up to 50 waiting recipients now"
+            >
+              {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+              Process due ({dash.dueNow})
+            </Button>
+          )}
           {campaign.status === 'paused' && (
             <Button onClick={() => void handlePauseResume('active')}>
               <Play className="h-4 w-4" />
@@ -392,7 +428,10 @@ export default function DripCampaignDetailPage() {
           </dl>
           {campaign.status === 'active' && (
             <p className="mt-3 text-xs text-muted-foreground">
-              Cron processes due enrollments about every 5 minutes.
+              Cron should process due enrollments about every 5 minutes. If Due now stays high,
+              use <span className="text-foreground">Process due</span> or check that{' '}
+              <code className="text-[11px]">CRON_SECRET</code> matches{' '}
+              <code className="text-[11px]">AUTOMATION_CRON_SECRET</code> on Vercel.
             </p>
           )}
         </div>

@@ -112,11 +112,8 @@ export function buildStepFunnel(params: {
     let reachedOrPast = 0;
     for (const e of enrollments) {
       if (e.status === 'active' && e.current_step_index === index) onStep++;
-      if (
-        e.status === 'completed' ||
-        e.current_step_index > index ||
-        (e.status === 'failed' && e.current_step_index >= index)
-      ) {
+      // Count anyone who has arrived at this step (including still waiting here).
+      if (e.status === 'completed' || e.current_step_index >= index) {
         reachedOrPast++;
       }
     }

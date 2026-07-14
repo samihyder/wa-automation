@@ -4,7 +4,7 @@ import { processDueDripEnrollments } from '@/lib/drip-campaigns/runner';
 import { verifyCronSecret } from '@/lib/cron-auth';
 
 export async function GET(request: Request) {
-  if (!process.env.AUTOMATION_CRON_SECRET) {
+  if (!process.env.AUTOMATION_CRON_SECRET && !process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'cron not configured' }, { status: 503 });
   }
   if (!verifyCronSecret(request)) {
