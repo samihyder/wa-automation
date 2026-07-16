@@ -368,7 +368,7 @@ export interface BroadcastRecipient {
 // Drip campaigns (migration 027)
 // ============================================================
 
-export type DripCampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
+export type DripCampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived';
 
 export interface DripCampaign {
   id: string;

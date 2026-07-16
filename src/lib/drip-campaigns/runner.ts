@@ -157,7 +157,12 @@ async function sendDripStep(
     .eq('id', enrollment.campaign_id)
     .maybeSingle();
 
-  if (campaign?.status === 'paused' || campaign?.status === 'draft') {
+  if (
+    campaign?.status === 'paused' ||
+    campaign?.status === 'draft' ||
+    campaign?.status === 'archived' ||
+    campaign?.status === 'completed'
+  ) {
     return { ok: false };
   }
 

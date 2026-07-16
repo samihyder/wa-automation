@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/table';
 import {
   AlertTriangle,
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
   CheckCircle2,
   Clock,
@@ -33,6 +35,7 @@ const STATUS_STYLES: Record<string, string> = {
   active: 'bg-primary/10 text-primary border-primary/20',
   paused: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  archived: 'bg-muted/50 text-muted-foreground border-border',
 };
 
 function pct(value: number, total: number) {
@@ -177,6 +180,43 @@ export default function DripCampaignDetailPage() {
       return;
     }
     toast.success(next === 'paused' ? 'Campaign paused' : 'Campaign resumed');
+    await load({ soft: true });
+  }
+
+  async function handleArchive() {
+    const supabase = createClient();
+    // Stop first: cancel any still-active enrollments so nothing sends further.
+    await supabase
+      .from('drip_enrollments')
+      .update({
+        status: 'cancelled',
+        last_error: 'Campaign archived — remaining steps stopped',
+      })
+      .eq('campaign_id', campaignId)
+      .eq('status', 'active');
+    const { error } = await supabase
+      .from('drip_campaigns')
+      .update({ status: 'archived' })
+      .eq('id', campaignId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Campaign archived');
+    await load({ soft: true });
+  }
+
+  async function handleUnarchive() {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('drip_campaigns')
+      .update({ status: 'paused' })
+      .eq('id', campaignId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Campaign restored (paused)');
     await load({ soft: true });
   }
 
@@ -326,6 +366,22 @@ export default function DripCampaignDetailPage() {
             <Button onClick={() => void handlePauseResume('active')}>
               <Play className="h-4 w-4" />
               Resume
+            </Button>
+          )}
+          {campaign.status !== 'draft' && campaign.status !== 'archived' && (
+            <Button
+              variant="outline"
+              onClick={() => void handleArchive()}
+              title="Stop sending and move this campaign to the archive"
+            >
+              <Archive className="h-4 w-4" />
+              Archive
+            </Button>
+          )}
+          {campaign.status === 'archived' && (
+            <Button variant="outline" onClick={() => void handleUnarchive()}>
+              <ArchiveRestore className="h-4 w-4" />
+              Unarchive
             </Button>
           )}
           <Button variant="outline" onClick={() => void load({ soft: true })}>

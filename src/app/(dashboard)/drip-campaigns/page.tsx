@@ -13,6 +13,7 @@ const STATUS_STYLES: Record<string, string> = {
   active: 'bg-primary/10 text-primary border-primary/20',
   paused: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  archived: 'bg-muted/50 text-muted-foreground border-border',
 };
 
 type CampaignHealth = {
@@ -45,6 +46,7 @@ export default function DripCampaignsPage() {
   const [healthById, setHealthById] = useState<Record<string, CampaignHealth>>({});
   const [loading, setLoading] = useState(true);
   const [loadMs, setLoadMs] = useState<number | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -87,6 +89,15 @@ export default function DripCampaignsPage() {
     void load();
   }, []);
 
+  const activeCampaigns = useMemo(
+    () => campaigns.filter((c) => c.status !== 'archived'),
+    [campaigns],
+  );
+  const archivedCampaigns = useMemo(
+    () => campaigns.filter((c) => c.status === 'archived'),
+    [campaigns],
+  );
+
   const totals = useMemo(() => {
     return Object.values(healthById).reduce(
       (acc, h) => ({
@@ -97,6 +108,48 @@ export default function DripCampaignsPage() {
       { active: 0, failed: 0, completed: 0 },
     );
   }, [healthById]);
+
+  const renderRow = (c: DripCampaign) => {
+    const health = healthById[c.id];
+    return (
+      <button
+        key={c.id}
+        type="button"
+        onClick={() => router.push(`/drip-campaigns/${c.id}`)}
+        className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left hover:bg-muted/50 transition-colors"
+      >
+        <div className="min-w-0">
+          <p className="font-medium text-foreground truncate">{c.name}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {audienceLabel(c.audience_filter as Record<string, unknown>)} ·{' '}
+            {health?.total ?? c.enrolled_count} enrolled ·{' '}
+            {health?.completed ?? c.completed_count} completed
+            {health?.failed ? ` · ${health.failed} failed` : ''}
+            {health?.active ? ` · ${health.active} active` : ''}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {health?.failed ? (
+            <span className="hidden sm:inline-flex rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[11px] text-red-300">
+              {health.failed} failed
+            </span>
+          ) : null}
+          {health?.active ? (
+            <span className="hidden sm:inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+              {health.active} live
+            </span>
+          ) : null}
+          <span
+            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${
+              STATUS_STYLES[c.status] ?? STATUS_STYLES.draft
+            }`}
+          >
+            {c.status}
+          </span>
+        </div>
+      </button>
+    );
+  };
 
   if (loading) {
     return (
@@ -140,49 +193,34 @@ export default function DripCampaignsPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border">
-          {campaigns.map((c) => {
-            const health = healthById[c.id];
-            return (
+        <>
+          {activeCampaigns.length > 0 ? (
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              {activeCampaigns.map(renderRow)}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+              No active drip campaigns — {archivedCampaigns.length} archived.
+            </div>
+          )}
+
+          {archivedCampaigns.length > 0 && (
+            <div className="space-y-2">
               <button
-                key={c.id}
                 type="button"
-                onClick={() => router.push(`/drip-campaigns/${c.id}`)}
-                className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left hover:bg-muted/50 transition-colors"
+                onClick={() => setShowArchived((v) => !v)}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {audienceLabel(c.audience_filter as Record<string, unknown>)} ·{' '}
-                    {health?.total ?? c.enrolled_count} enrolled ·{' '}
-                    {health?.completed ?? c.completed_count} completed
-                    {health?.failed ? ` · ${health.failed} failed` : ''}
-                    {health?.active ? ` · ${health.active} active` : ''}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {health?.failed ? (
-                    <span className="hidden sm:inline-flex rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[11px] text-red-300">
-                      {health.failed} failed
-                    </span>
-                  ) : null}
-                  {health?.active ? (
-                    <span className="hidden sm:inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
-                      {health.active} live
-                    </span>
-                  ) : null}
-                  <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${
-                      STATUS_STYLES[c.status] ?? STATUS_STYLES.draft
-                    }`}
-                  >
-                    {c.status}
-                  </span>
-                </div>
+                {showArchived ? 'Hide' : 'Show'} archived ({archivedCampaigns.length})
               </button>
-            );
-          })}
-        </div>
+              {showArchived && (
+                <div className="rounded-xl border border-border bg-card divide-y divide-border opacity-80">
+                  {archivedCampaigns.map(renderRow)}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
